@@ -117,7 +117,7 @@ Check if the results correctly and completely answer the user's query.""",
             }
         ]
 
-        response = self._call_claude(
+        response = self._call_llm(
             system_prompt=VALIDATOR_SYSTEM_PROMPT,
             messages=messages,
             max_tokens=1024,

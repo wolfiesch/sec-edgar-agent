@@ -67,10 +67,10 @@ if __name__ == "__main__":
 
     # Check if we have API key
     from src.config import settings
-    if not settings.anthropic_api_key or settings.anthropic_api_key == "":
-        print("\n⚠️  Warning: ANTHROPIC_API_KEY not set in .env")
+    if not settings.openai_api_key or settings.openai_api_key == "":
+        print("\n⚠️  Warning: OPENAI_API_KEY not set in .env")
         print("This test will fail without a valid API key.")
-        print("Please set ANTHROPIC_API_KEY in .env file.")
+        print("Please set OPENAI_API_KEY in .env file.")
         sys.exit(1)
 
     results = []

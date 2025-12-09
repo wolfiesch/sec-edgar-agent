@@ -26,7 +26,7 @@ class Orchestrator:
     """
 
     def __init__(self, model: str | None = None):
-        self.model = model or settings.claude_model
+        self.model = model or settings.openai_model
         self.planner = PlannerAgent(model)
         self.executor = ExecutorAgent(model)
         self.validator = ValidatorAgent(model)

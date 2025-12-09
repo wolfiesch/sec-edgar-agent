@@ -169,26 +169,26 @@ class ExecutorAgent(BaseAgent):
             }
         ]
 
-        response = self._call_claude(
+        response = self._call_llm(
             system_prompt=system_prompt,
             messages=messages,
             tools=tools,
             max_tokens=2048,
         )
 
-        # Handle tool use
-        tool_uses = self._extract_tool_use(response["content"])
-        if tool_uses:
+        # Handle tool calls
+        tool_calls = self._extract_tool_calls(response["tool_calls"])
+        if tool_calls:
             # Execute the first tool call
-            tool_use = tool_uses[0]
-            self.logger.info(f"Calling tool: {tool_use['name']} with {tool_use['input']}")
+            tool_call = tool_calls[0]
+            self.logger.info(f"Calling tool: {tool_call['name']} with {tool_call['input']}")
 
-            result = registry.execute(tool_use["name"], tool_use["input"])
+            result = registry.execute(tool_call["name"], tool_call["input"])
 
             if result.success:
                 return result.result
             else:
-                raise Exception(f"Tool {tool_use['name']} failed: {result.error}")
+                raise Exception(f"Tool {tool_call['name']} failed: {result.error}")
 
         # If no tool use, try to extract from text (fallback)
         text = self._extract_text(response["content"])
@@ -198,10 +198,11 @@ class ExecutorAgent(BaseAgent):
         """Format tools with full parameter details."""
         lines = []
         for tool in tools:
-            lines.append(f"\n### {tool['name']}")
-            lines.append(f"Description: {tool['description']}")
-            params = tool.get("input_schema", {}).get("properties", {})
-            required = tool.get("input_schema", {}).get("required", [])
+            func = tool.get("function", {})
+            lines.append(f"\n### {func['name']}")
+            lines.append(f"Description: {func['description']}")
+            params = func.get("parameters", {}).get("properties", {})
+            required = func.get("parameters", {}).get("required", [])
 
             if params:
                 lines.append("Parameters:")

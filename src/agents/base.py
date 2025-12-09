@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any
 
-from anthropic import Anthropic
+from openai import OpenAI
 from pydantic import BaseModel, Field
 
 from src.config import settings
@@ -86,8 +86,8 @@ class BaseAgent(ABC):
         model: str | None = None,
     ):
         self.role = role
-        self.model = model or settings.claude_model
-        self.client = Anthropic(api_key=settings.anthropic_api_key)
+        self.model = model or settings.openai_model
+        self.client = OpenAI(api_key=settings.openai_api_key)
         self.logger = logging.getLogger(f"{__name__}.{role.value}")
 
     @abstractmethod
@@ -95,56 +95,62 @@ class BaseAgent(ABC):
         """Execute the agent's task."""
         pass
 
-    def _call_claude(
+    def _call_llm(
         self,
         system_prompt: str,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]] | None = None,
         max_tokens: int = 4096,
     ) -> dict[str, Any]:
-        """Make a call to Claude API."""
+        """Make a call to OpenAI API."""
         try:
+            # Add system message to messages list (OpenAI format)
+            full_messages = [{"role": "system", "content": system_prompt}] + messages
+
             kwargs: dict[str, Any] = {
                 "model": self.model,
                 "max_tokens": max_tokens,
-                "system": system_prompt,
-                "messages": messages,
+                "messages": full_messages,
             }
 
             if tools:
                 kwargs["tools"] = tools
 
-            response = self.client.messages.create(**kwargs)
+            response = self.client.chat.completions.create(**kwargs)
+
+            # Extract message from response
+            message = response.choices[0].message
 
             return {
-                "content": response.content,
-                "stop_reason": response.stop_reason,
+                "content": message.content,
+                "tool_calls": message.tool_calls,
+                "finish_reason": response.choices[0].finish_reason,
                 "usage": {
-                    "input_tokens": response.usage.input_tokens,
-                    "output_tokens": response.usage.output_tokens,
+                    "input_tokens": response.usage.prompt_tokens,
+                    "output_tokens": response.usage.completion_tokens,
                 },
             }
 
         except Exception as e:
-            self.logger.error(f"Claude API call failed: {e}")
+            self.logger.error(f"OpenAI API call failed: {e}")
             raise
 
-    def _extract_text(self, content: list[Any]) -> str:
-        """Extract text from Claude response content blocks."""
-        text_parts = []
-        for block in content:
-            if hasattr(block, "text"):
-                text_parts.append(block.text)
-        return "\n".join(text_parts)
+    def _extract_text(self, content: str | None) -> str:
+        """Extract text from OpenAI response content."""
+        return content or ""
 
-    def _extract_tool_use(self, content: list[Any]) -> list[dict[str, Any]]:
-        """Extract tool use blocks from Claude response."""
-        tool_uses = []
-        for block in content:
-            if hasattr(block, "type") and block.type == "tool_use":
-                tool_uses.append({
-                    "id": block.id,
-                    "name": block.name,
-                    "input": block.input,
+    def _extract_tool_calls(self, tool_calls: list[Any] | None) -> list[dict[str, Any]]:
+        """Extract tool calls from OpenAI response."""
+        if not tool_calls:
+            return []
+
+        extracted = []
+        for tool_call in tool_calls:
+            if hasattr(tool_call, "function"):
+                import json
+                extracted.append({
+                    "id": tool_call.id,
+                    "name": tool_call.function.name,
+                    "input": json.loads(tool_call.function.arguments),
                 })
-        return tool_uses
+        return extracted

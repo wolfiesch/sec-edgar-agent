@@ -1,5 +1,6 @@
 """Integration tests for agent orchestration."""
 
+import json
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -8,29 +9,36 @@ from src.agents.base import AgentContext, Plan, Task, TaskStatus
 from src.agents.orchestrator import Orchestrator
 
 
-def create_text_block(text: str) -> Mock:
-    """Create a mock Anthropic text content block."""
-    block = Mock()
-    block.type = "text"
-    block.text = text
-    return block
+def create_openai_response(content: str, tool_calls: list | None = None) -> Mock:
+    """Create a mock OpenAI ChatCompletion response."""
+    response = Mock()
+    response.choices = [Mock()]
+    response.choices[0].message = Mock()
+    response.choices[0].message.content = content
+    response.choices[0].message.tool_calls = tool_calls
+    response.choices[0].finish_reason = "stop"
+    response.usage = Mock()
+    response.usage.prompt_tokens = 100
+    response.usage.completion_tokens = 50
+    return response
 
 
-def create_tool_use_block(tool_id: str, name: str, input_data: dict) -> Mock:
-    """Create a mock Anthropic tool use content block."""
-    block = Mock()
-    block.type = "tool_use"
-    block.id = tool_id
-    block.name = name
-    block.input = input_data
-    return block
+def create_tool_call(tool_id: str, name: str, input_data: dict) -> Mock:
+    """Create a mock OpenAI tool call."""
+    tool_call = Mock()
+    tool_call.id = tool_id
+    tool_call.type = "function"
+    tool_call.function = Mock()
+    tool_call.function.name = name
+    tool_call.function.arguments = json.dumps(input_data)
+    return tool_call
 
 
 class TestOrchestratorIntegration:
     """Integration tests for the full agent workflow."""
 
-    @patch("src.agents.base.BaseAgent._call_claude")
-    def test_simple_query_workflow(self, mock_call_claude: MagicMock) -> None:
+    @patch("src.agents.base.BaseAgent._call_llm")
+    def test_simple_query_workflow(self, mock_call_llm: MagicMock) -> None:
         """Test orchestrator with a simple query."""
         # Mock planner response
         plan_json = """{
@@ -46,23 +54,28 @@ class TestOrchestratorIntegration:
             ]
         }"""
 
-        # Mock executor response (tool result)
-        tool_result = """{
-            "success": true,
-            "ticker": "AAPL",
-            "name": "Apple Inc.",
-            "cik": "0000320193"
-        }"""
-
         # Mock synthesizer response
         synthesis = "Apple Inc. (AAPL) is a technology company with CIK 0000320193."
 
-        mock_call_claude.side_effect = [
-            {"content": [create_text_block(plan_json)]},  # Planner
-            {  # Executor with tool use
-                "content": [create_tool_use_block("toolu_1", "get_company_info", {"ticker": "AAPL"})]
+        mock_call_llm.side_effect = [
+            {  # Planner
+                "content": plan_json,
+                "tool_calls": None,
+                "finish_reason": "stop",
+                "usage": {"input_tokens": 100, "output_tokens": 50},
             },
-            {"content": [create_text_block(synthesis)]},  # Synthesizer
+            {  # Executor with tool call
+                "content": None,
+                "tool_calls": [create_tool_call("call_1", "get_company_info", {"ticker": "AAPL"})],
+                "finish_reason": "tool_calls",
+                "usage": {"input_tokens": 100, "output_tokens": 50},
+            },
+            {  # Synthesizer
+                "content": synthesis,
+                "tool_calls": None,
+                "finish_reason": "stop",
+                "usage": {"input_tokens": 100, "output_tokens": 50},
+            },
         ]
 
         orchestrator = Orchestrator()
@@ -83,10 +96,10 @@ class TestOrchestratorIntegration:
             assert isinstance(result, str)
             assert len(result) > 0
             # Planner, Executor, Synthesizer should be called (no validation for simple)
-            assert mock_call_claude.call_count == 3
+            assert mock_call_llm.call_count == 3
 
-    @patch("src.agents.base.BaseAgent._call_claude")
-    def test_complex_query_workflow(self, mock_call_claude: MagicMock) -> None:
+    @patch("src.agents.base.BaseAgent._call_llm")
+    def test_complex_query_workflow(self, mock_call_llm: MagicMock) -> None:
         """Test orchestrator with a complex multi-step query."""
         # Mock planner response - multi-step plan
         plan_json = """{
@@ -109,25 +122,17 @@ class TestOrchestratorIntegration:
         }"""
 
         # Mock responses for each phase
-        mock_call_claude.side_effect = [
-            {"content": [create_text_block(plan_json)]},  # Planner
-            {  # Executor - task 1
-                "content": [
-                    create_tool_use_block(
+        mock_call_llm.side_effect = [
+            {"content": plan_json, "tool_calls": None, "finish_reason": "stop", "usage": {"input_tokens": 100, "output_tokens": 50}},  # Planner
+            {"content": None, "tool_calls": [create_tool_call(
                         "toolu_1", "get_income_statement", {"ticker": "AAPL", "periods": 3}
-                    )
-                ]
-            },
-            {  # Executor - task 2
-                "content": [
-                    create_tool_use_block(
+                    )], "finish_reason": "tool_calls", "usage": {"input_tokens": 100, "output_tokens": 50}},
+            {"content": None, "tool_calls": [create_tool_call(
                         "toolu_2", "analyze_historical_trends", {"ticker": "AAPL", "metric": "revenue"}
-                    )
-                ]
-            },
-            {"content": [create_text_block('{"valid": true, "confidence": 0.95}')]},  # Validator
+                    )], "finish_reason": "tool_calls", "usage": {"input_tokens": 100, "output_tokens": 50}},
+            {"content": '{"valid": true, "confidence": 0.95}', "tool_calls": None, "finish_reason": "stop", "usage": {"input_tokens": 100, "output_tokens": 50}},  # Validator
             {  # Synthesizer
-                "content": [create_text_block("Apple's revenue has grown at 12% CAGR over 3 years.")]
+                "content": "Apple's revenue has grown at 12% CAGR over 3 years.", "tool_calls": None, "finish_reason": "stop", "usage": {"input_tokens": 100, "output_tokens": 50}
             },
         ]
 
@@ -164,11 +169,11 @@ class TestOrchestratorIntegration:
 
             assert isinstance(result, str)
             # Should call planner, executor (2x), validator, synthesizer
-            assert mock_call_claude.call_count == 5
+            assert mock_call_llm.call_count == 5
             assert mock_execute.call_count == 2
 
-    @patch("src.agents.base.BaseAgent._call_claude")
-    def test_workflow_with_tool_failure(self, mock_call_claude: MagicMock) -> None:
+    @patch("src.agents.base.BaseAgent._call_llm")
+    def test_workflow_with_tool_failure(self, mock_call_llm: MagicMock) -> None:
         """Test that workflow handles tool failures gracefully."""
         plan_json = """{
             "reasoning": "Lookup company info",
@@ -183,15 +188,11 @@ class TestOrchestratorIntegration:
             ]
         }"""
 
-        mock_call_claude.side_effect = [
-            {"content": [create_text_block(plan_json)]},  # Planner
-            {  # Executor
-                "content": [
-                    create_tool_use_block("toolu_1", "get_company_info", {"ticker": "INVALID"})
-                ]
-            },
+        mock_call_llm.side_effect = [
+            {"content": plan_json, "tool_calls": None, "finish_reason": "stop", "usage": {"input_tokens": 100, "output_tokens": 50}},  # Planner
+            {"content": None, "tool_calls": [create_tool_call("toolu_1", "get_company_info", {"ticker": "INVALID"})], "finish_reason": "tool_calls", "usage": {"input_tokens": 100, "output_tokens": 50}},
             {  # Synthesizer (should still run)
-                "content": [create_text_block("Unable to find company information for INVALID.")]
+                "content": "Unable to find company information for INVALID.", "tool_calls": None, "finish_reason": "stop", "usage": {"input_tokens": 100, "output_tokens": 50}
             },
         ]
 
@@ -213,10 +214,10 @@ class TestOrchestratorIntegration:
 
             assert isinstance(result, str)
             # Should still complete workflow
-            assert mock_call_claude.call_count >= 2
+            assert mock_call_llm.call_count >= 2
 
-    @patch("src.agents.base.BaseAgent._call_claude")
-    def test_max_steps_limit(self, mock_call_claude: MagicMock) -> None:
+    @patch("src.agents.base.BaseAgent._call_llm")
+    def test_max_steps_limit(self, mock_call_llm: MagicMock) -> None:
         """Test that orchestrator respects max_steps limit."""
         # Create a plan with many tasks
         plan_json = """{
@@ -231,18 +232,14 @@ class TestOrchestratorIntegration:
             ]
         )
 
-        mock_call_claude.side_effect = [
-            {"content": [create_text_block(plan_json)]},  # Planner
+        mock_call_llm.side_effect = [
+            {"content": plan_json, "tool_calls": None, "finish_reason": "stop", "usage": {"input_tokens": 100, "output_tokens": 50}},  # Planner
         ] + [
-            {  # Executor responses
-                "content": [
-                    create_tool_use_block(f"toolu_{i}", "get_company_info", {"ticker": "AAPL"})
-                ]
-            }
+            {"content": None, "tool_calls": [create_tool_call(f"toolu_{i}", "get_company_info", {"ticker": "AAPL"})], "finish_reason": "tool_calls", "usage": {"input_tokens": 100, "output_tokens": 50}}
             for i in range(25)
         ] + [
-            {"content": [create_text_block("{}")]},  # Validator
-            {"content": [create_text_block("Result")]},  # Synthesizer
+            {"content": "{}", "tool_calls": None, "finish_reason": "stop", "usage": {"input_tokens": 100, "output_tokens": 50}},  # Validator
+            {"content": "Result", "tool_calls": None, "finish_reason": "stop", "usage": {"input_tokens": 100, "output_tokens": 50}},  # Synthesizer
         ]
 
         orchestrator = Orchestrator()
@@ -282,8 +279,8 @@ class TestOrchestratorErrorHandling:
         assert isinstance(result, str)
         assert "Failed to create plan" in result
 
-    @patch("src.agents.base.BaseAgent._call_claude")
-    def test_executor_continuous_failure(self, mock_call_claude: MagicMock) -> None:
+    @patch("src.agents.base.BaseAgent._call_llm")
+    def test_executor_continuous_failure(self, mock_call_llm: MagicMock) -> None:
         """Test that executor failures don't block completion."""
         plan_json = """{
             "reasoning": "Test plan",
@@ -294,11 +291,11 @@ class TestOrchestratorErrorHandling:
             ]
         }"""
 
-        mock_call_claude.side_effect = [
-            {"content": [create_text_block(plan_json)]},
-            {"content": [create_text_block("Executor response")]},
-            {"content": [create_text_block("Executor response")]},
-            {"content": [create_text_block("Final response")]},
+        mock_call_llm.side_effect = [
+            {"content": plan_json, "tool_calls": None, "finish_reason": "stop", "usage": {"input_tokens": 100, "output_tokens": 50}},
+            {"content": "Executor response", "tool_calls": None, "finish_reason": "stop", "usage": {"input_tokens": 100, "output_tokens": 50}},
+            {"content": "Executor response", "tool_calls": None, "finish_reason": "stop", "usage": {"input_tokens": 100, "output_tokens": 50}},
+            {"content": "Final response", "tool_calls": None, "finish_reason": "stop", "usage": {"input_tokens": 100, "output_tokens": 50}},
         ]
 
         orchestrator = Orchestrator()
@@ -316,4 +313,4 @@ class TestOrchestratorErrorHandling:
 
             assert isinstance(result, str)
             # Should reach synthesizer despite failures
-            assert mock_call_claude.call_count >= 1
+            assert mock_call_llm.call_count >= 1

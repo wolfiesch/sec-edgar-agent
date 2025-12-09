@@ -76,7 +76,7 @@ class PlannerAgent(BaseAgent):
         ]
 
         try:
-            response = self._call_claude(
+            response = self._call_llm(
                 system_prompt=system_prompt,
                 messages=messages,
                 max_tokens=2048,
@@ -115,9 +115,10 @@ class PlannerAgent(BaseAgent):
         """Format tools for the system prompt."""
         lines = []
         for tool in tools:
-            params = tool.get("input_schema", {}).get("properties", {})
+            func = tool.get("function", {})
+            params = func.get("parameters", {}).get("properties", {})
             param_names = list(params.keys())
-            lines.append(f"- {tool['name']}: {tool['description']}")
+            lines.append(f"- {func['name']}: {func['description']}")
             if param_names:
                 lines.append(f"  Parameters: {', '.join(param_names)}")
         return "\n".join(lines)

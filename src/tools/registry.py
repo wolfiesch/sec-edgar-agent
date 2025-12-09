@@ -90,16 +90,19 @@ class ToolRegistry:
 
     def get_tools_for_llm(self) -> list[dict[str, Any]]:
         """
-        Get all tools formatted for Claude's tool_use API.
+        Get all tools formatted for OpenAI's function calling API.
 
         Returns:
-            List of tool definitions in Claude API format
+            List of tool definitions in OpenAI API format
         """
         return [
             {
-                "name": tool.name,
-                "description": tool.description,
-                "input_schema": tool.parameters,
+                "type": "function",
+                "function": {
+                    "name": tool.name,
+                    "description": tool.description,
+                    "parameters": tool.parameters,
+                },
             }
             for tool in self._tools.values()
         ]

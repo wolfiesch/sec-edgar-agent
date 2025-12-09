@@ -14,10 +14,10 @@ class TestSettings:
 
     def test_settings_defaults(self) -> None:
         """Test default settings values."""
-        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}, clear=True):
+        with patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"}, clear=True):
             settings = Settings()
-            assert settings.anthropic_api_key == "test-key"
-            assert settings.claude_model == "claude-sonnet-4-20250514"
+            assert settings.openai_api_key == "test-key"
+            assert settings.openai_model == "gpt-4o"
             assert settings.cache_ttl_seconds == 1800
             assert settings.log_level == "INFO"
             assert settings.max_agent_steps == 20
@@ -27,8 +27,8 @@ class TestSettings:
         with patch.dict(
             "os.environ",
             {
-                "ANTHROPIC_API_KEY": "custom-key",
-                "CLAUDE_MODEL": "claude-opus-4-20250514",
+                "OPENAI_API_KEY": "custom-key",
+                "OPENAI_MODEL": "gpt-4-turbo",
                 "CACHE_TTL_SECONDS": "3600",
                 "LOG_LEVEL": "DEBUG",
                 "MAX_AGENT_STEPS": "50",
@@ -37,8 +37,8 @@ class TestSettings:
             clear=True,
         ):
             settings = Settings()
-            assert settings.anthropic_api_key == "custom-key"
-            assert settings.claude_model == "claude-opus-4-20250514"
+            assert settings.openai_api_key == "custom-key"
+            assert settings.openai_model == "gpt-4-turbo"
             assert settings.cache_ttl_seconds == 3600
             assert settings.log_level == "DEBUG"
             assert settings.max_agent_steps == 50
@@ -46,14 +46,14 @@ class TestSettings:
 
     def test_cache_dir_creation(self) -> None:
         """Test that cache_dir is properly set."""
-        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}, clear=True):
+        with patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"}, clear=True):
             settings = Settings()
             assert isinstance(settings.cache_dir, Path)
             assert "cache" in str(settings.cache_dir)
 
     def test_chroma_persist_dir(self) -> None:
         """Test chroma persist directory setting."""
-        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}, clear=True):
+        with patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"}, clear=True):
             settings = Settings()
             assert isinstance(settings.chroma_persist_dir, Path)
             assert "chroma" in str(settings.chroma_persist_dir)
@@ -64,7 +64,7 @@ class TestSettings:
             with patch.dict(
                 "os.environ",
                 {
-                    "ANTHROPIC_API_KEY": "test-key",
+                    "OPENAI_API_KEY": "test-key",
                     "CACHE_DIR": tmpdir,
                 },
                 clear=True,
@@ -76,4 +76,4 @@ class TestSettings:
         """Test default API key when not set."""
         with patch.dict("os.environ", {}, clear=True):
             settings = Settings()
-            assert settings.anthropic_api_key == ""  # Has default empty string
+            assert settings.openai_api_key == ""  # Has default empty string

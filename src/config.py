@@ -16,14 +16,14 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # Anthropic API
-    anthropic_api_key: str = Field(
+    # OpenAI API
+    openai_api_key: str = Field(
         default="",
-        description="Anthropic API key for Claude",
+        description="OpenAI API key",
     )
-    claude_model: str = Field(
-        default="claude-sonnet-4-20250514",
-        description="Claude model to use",
+    openai_model: str = Field(
+        default="gpt-4o",
+        description="OpenAI model to use (e.g., gpt-4o, gpt-4-turbo, gpt-3.5-turbo)",
     )
 
     # SEC EDGAR

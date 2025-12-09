@@ -99,7 +99,7 @@ class SynthesizerAgent(BaseAgent):
             }
         ]
 
-        response = self._call_claude(
+        response = self._call_llm(
             system_prompt=system_prompt,
             messages=messages,
             max_tokens=4096,

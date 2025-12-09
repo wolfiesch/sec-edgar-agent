@@ -94,11 +94,12 @@ class TestToolRegistry:
         assert len(tools) == 1
 
         tool = tools[0]
-        assert tool["name"] == "search"
-        assert tool["description"] == "Search for something"
-        assert "input_schema" in tool
-        assert tool["input_schema"]["type"] == "object"
-        assert "query" in tool["input_schema"]["properties"]
+        assert tool["type"] == "function"
+        assert tool["function"]["name"] == "search"
+        assert tool["function"]["description"] == "Search for something"
+        assert "parameters" in tool["function"]
+        assert tool["function"]["parameters"]["type"] == "object"
+        assert "query" in tool["function"]["parameters"]["properties"]
 
     def test_execute_tool_success(self, registry: ToolRegistry) -> None:
         """Test executing a tool successfully."""
@@ -280,7 +281,7 @@ class TestRegistryIntegration:
         # Verify LLM format
         llm_tools = registry.get_tools_for_llm()
         assert len(llm_tools) == 1
-        assert llm_tools[0]["name"] == "search_filings"
+        assert llm_tools[0]["function"]["name"] == "search_filings"
 
         # Execute with required arg only
         result = registry.execute("search_filings", {"ticker": "AAPL"})
