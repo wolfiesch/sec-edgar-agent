@@ -37,6 +37,12 @@ dev = [
     "mypy>=1.13.0",
 ]
 
+api = [
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "websockets>=12.0",
+]
+
 [project.scripts]
 edgar-agent = "src.main:app"
 
