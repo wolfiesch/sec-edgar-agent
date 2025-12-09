@@ -186,10 +186,24 @@ def handle_command(command: str) -> bool:
 
 def run_chat_loop() -> None:
     """Run the interactive chat loop."""
-    # Import here to register tools
+    # Import here to register tools and agents
     from src.tools import registry
+    from src.agents import StreamingOrchestrator
+    from src.config import settings
+
+    # Check if we have an API key
+    has_api_key = bool(settings.anthropic_api_key)
 
     print_welcome()
+
+    if not has_api_key:
+        console.print(
+            "\n[yellow]Note: No ANTHROPIC_API_KEY found. "
+            "Natural language queries require an API key.[/yellow]\n"
+            "[dim]Use slash commands (/company, /filings, etc.) or set your API key in .env[/dim]\n"
+        )
+
+    orchestrator = StreamingOrchestrator() if has_api_key else None
 
     while True:
         try:
@@ -205,16 +219,38 @@ def run_chat_loop() -> None:
                     break
                 continue
 
-            # For now, provide helpful guidance
-            # Full AI agent integration will come in Phase 2
-            console.print(
-                "\n[yellow]AI agent mode coming soon![/yellow]\n"
-                "For now, use these commands:\n"
-                "• [green]/company TICKER[/green] - Company info\n"
-                "• [green]/filings TICKER[/green] - Recent filings\n"
-                "• [green]/financials TICKER[/green] - Financial data\n"
-                "• [green]/insider TICKER[/green] - Insider trades\n"
-            )
+            # Natural language query - use the agent
+            if not has_api_key:
+                console.print(
+                    "\n[yellow]Natural language queries require ANTHROPIC_API_KEY.[/yellow]\n"
+                    "Set it in your .env file, or use slash commands:\n"
+                    "• [green]/company TICKER[/green] - Company info\n"
+                    "• [green]/filings TICKER[/green] - Recent filings\n"
+                )
+                continue
+
+            # Run the agent with streaming progress
+            console.print()
+            for phase, message, data in orchestrator.run_streaming(user_input):
+                if phase == "planning":
+                    console.print(f"[dim]🔍 {message}[/dim]")
+                elif phase == "planned":
+                    console.print(f"[dim]📋 {message}[/dim]")
+                elif phase == "executing":
+                    console.print(f"[dim]⚙️  {message}[/dim]")
+                elif phase == "task_complete":
+                    console.print(f"[dim]   ✓ {message}[/dim]")
+                elif phase == "validating":
+                    console.print(f"[dim]🔎 {message}[/dim]")
+                elif phase == "synthesizing":
+                    console.print(f"[dim]📝 {message}[/dim]")
+                elif phase == "complete":
+                    console.print()
+                    console.print(Markdown(message))
+                    if data and "elapsed" in data:
+                        console.print(f"\n[dim]Completed in {data['elapsed']:.1f}s[/dim]")
+                elif phase == "error":
+                    console.print(f"\n[red]Error: {message}[/red]")
 
         except KeyboardInterrupt:
             console.print("\n[yellow]Use /quit to exit[/yellow]")
@@ -284,6 +320,28 @@ def financials(
     else:
         console.print(f"[red]Error: {result.error}[/red]")
         raise typer.Exit(1)
+
+
+@app.command()
+def ask(
+    query: str = typer.Argument(..., help="Natural language question about SEC filings"),
+) -> None:
+    """Ask a natural language question about SEC filings."""
+    from src.agents import Orchestrator
+    from src.config import settings
+
+    if not settings.anthropic_api_key:
+        console.print("[red]Error: ANTHROPIC_API_KEY not set in environment[/red]")
+        console.print("[dim]Set it in your .env file or export it[/dim]")
+        raise typer.Exit(1)
+
+    orchestrator = Orchestrator()
+
+    with console.status("[cyan]Researching...[/cyan]"):
+        response = orchestrator.run(query)
+
+    console.print()
+    console.print(Markdown(response))
 
 
 @app.callback(invoke_without_command=True)
