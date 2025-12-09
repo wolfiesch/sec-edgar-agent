@@ -22,13 +22,12 @@ R = TypeVar("R")
 class ToolDefinition(BaseModel):
     """Definition of a registered tool."""
 
+    model_config = {"arbitrary_types_allowed": True}
+
     name: str
     description: str
     parameters: dict[str, Any]
     function: Callable[..., Any] | None = None
-
-    class Config:
-        arbitrary_types_allowed = True
 
 
 class ToolRegistry:

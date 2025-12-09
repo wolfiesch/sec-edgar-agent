@@ -21,7 +21,7 @@ uv sync
 
 # Copy environment file and add your API key
 cp .env.example .env
-# Edit .env with your ANTHROPIC_API_KEY
+# Edit .env with your OPENAI_API_KEY
 
 # Run the agent
 uv run edgar-agent

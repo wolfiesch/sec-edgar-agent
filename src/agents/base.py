@@ -56,6 +56,8 @@ class Plan(BaseModel):
 class AgentContext(BaseModel):
     """Context passed between agents during execution."""
 
+    model_config = {"arbitrary_types_allowed": True}
+
     query: str = Field(description="Original user query")
     plan: Plan | None = Field(default=None)
     tool_results: list[dict[str, Any]] = Field(default_factory=list)
@@ -63,9 +65,6 @@ class AgentContext(BaseModel):
     citations: list[Any] = Field(default_factory=list)
     step_count: int = Field(default=0)
     max_steps: int = Field(default=20)
-
-    class Config:
-        arbitrary_types_allowed = True
 
 
 class AgentResponse(BaseModel):
