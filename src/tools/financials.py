@@ -1,0 +1,366 @@
+"""Financial data extraction tools."""
+
+import logging
+from typing import Any
+
+from src.data.edgar_client import get_edgar_client
+from src.data.models import Citation
+from src.tools.registry import registry
+
+logger = logging.getLogger(__name__)
+
+
+@registry.register(
+    name="get_income_statement",
+    description="Get income statement data (revenue, net income, EPS, etc.) from SEC filings",
+    parameters={
+        "type": "object",
+        "properties": {
+            "ticker": {
+                "type": "string",
+                "description": "Stock ticker symbol",
+            },
+            "periods": {
+                "type": "integer",
+                "description": "Number of annual periods to retrieve",
+                "default": 3,
+                "minimum": 1,
+                "maximum": 10,
+            },
+        },
+        "required": ["ticker"],
+    },
+)
+def get_income_statement(
+    ticker: str,
+    periods: int = 3,
+) -> dict[str, Any]:
+    """Get income statement data."""
+    client = get_edgar_client()
+
+    try:
+        statements = client.get_financials(
+            ticker=ticker,
+            statement_type="income_statement",
+            periods=periods,
+        )
+
+        if not statements:
+            return {
+                "success": False,
+                "error": f"No income statement data found for {ticker}",
+            }
+
+        # Build citations
+        citations = [
+            Citation(
+                ticker=ticker.upper(),
+                form_type="10-K",
+                filing_date=s.period_end,
+                section="Financial Statements",
+                accession_number="",  # Would need to track this
+            )
+            for s in statements
+        ]
+
+        return {
+            "success": True,
+            "ticker": ticker.upper(),
+            "periods": len(statements),
+            "statements": [
+                {
+                    "fiscal_year": s.fiscal_year,
+                    "period_end": s.period_end.isoformat(),
+                    "currency": s.currency,
+                    "data": s.data,
+                }
+                for s in statements
+            ],
+            "citations": citations,
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get income statement: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+        }
+
+
+@registry.register(
+    name="get_balance_sheet",
+    description="Get balance sheet data (assets, liabilities, equity) from SEC filings",
+    parameters={
+        "type": "object",
+        "properties": {
+            "ticker": {
+                "type": "string",
+                "description": "Stock ticker symbol",
+            },
+            "periods": {
+                "type": "integer",
+                "description": "Number of annual periods to retrieve",
+                "default": 3,
+            },
+        },
+        "required": ["ticker"],
+    },
+)
+def get_balance_sheet(
+    ticker: str,
+    periods: int = 3,
+) -> dict[str, Any]:
+    """Get balance sheet data."""
+    client = get_edgar_client()
+
+    try:
+        statements = client.get_financials(
+            ticker=ticker,
+            statement_type="balance_sheet",
+            periods=periods,
+        )
+
+        if not statements:
+            return {
+                "success": False,
+                "error": f"No balance sheet data found for {ticker}",
+            }
+
+        return {
+            "success": True,
+            "ticker": ticker.upper(),
+            "periods": len(statements),
+            "statements": [
+                {
+                    "fiscal_year": s.fiscal_year,
+                    "period_end": s.period_end.isoformat(),
+                    "currency": s.currency,
+                    "data": s.data,
+                }
+                for s in statements
+            ],
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get balance sheet: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+        }
+
+
+@registry.register(
+    name="get_cash_flow",
+    description="Get cash flow statement data from SEC filings",
+    parameters={
+        "type": "object",
+        "properties": {
+            "ticker": {
+                "type": "string",
+                "description": "Stock ticker symbol",
+            },
+            "periods": {
+                "type": "integer",
+                "description": "Number of annual periods to retrieve",
+                "default": 3,
+            },
+        },
+        "required": ["ticker"],
+    },
+)
+def get_cash_flow(
+    ticker: str,
+    periods: int = 3,
+) -> dict[str, Any]:
+    """Get cash flow statement data."""
+    client = get_edgar_client()
+
+    try:
+        statements = client.get_financials(
+            ticker=ticker,
+            statement_type="cash_flow",
+            periods=periods,
+        )
+
+        if not statements:
+            return {
+                "success": False,
+                "error": f"No cash flow data found for {ticker}",
+            }
+
+        return {
+            "success": True,
+            "ticker": ticker.upper(),
+            "periods": len(statements),
+            "statements": [
+                {
+                    "fiscal_year": s.fiscal_year,
+                    "period_end": s.period_end.isoformat(),
+                    "currency": s.currency,
+                    "data": s.data,
+                }
+                for s in statements
+            ],
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get cash flow: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+        }
+
+
+@registry.register(
+    name="get_insider_trades",
+    description="Get recent insider trading activity (Form 4) for a company",
+    parameters={
+        "type": "object",
+        "properties": {
+            "ticker": {
+                "type": "string",
+                "description": "Stock ticker symbol",
+            },
+            "limit": {
+                "type": "integer",
+                "description": "Maximum number of transactions to return",
+                "default": 20,
+            },
+        },
+        "required": ["ticker"],
+    },
+)
+def get_insider_trades(
+    ticker: str,
+    limit: int = 20,
+) -> dict[str, Any]:
+    """Get insider trading transactions."""
+    client = get_edgar_client()
+
+    try:
+        transactions = client.get_insider_transactions(ticker, limit)
+
+        if not transactions:
+            return {
+                "success": True,
+                "ticker": ticker.upper(),
+                "message": "No recent insider transactions found",
+                "transactions": [],
+            }
+
+        # Summarize by insider
+        by_insider: dict[str, dict[str, Any]] = {}
+        for txn in transactions:
+            name = txn.insider_name
+            if name not in by_insider:
+                by_insider[name] = {
+                    "name": name,
+                    "title": txn.insider_title,
+                    "total_bought": 0,
+                    "total_sold": 0,
+                    "transactions": [],
+                }
+
+            if txn.transaction_type == "P":
+                by_insider[name]["total_bought"] += txn.shares
+            elif txn.transaction_type == "S":
+                by_insider[name]["total_sold"] += txn.shares
+
+            by_insider[name]["transactions"].append({
+                "date": txn.transaction_date.isoformat(),
+                "type": "Buy" if txn.transaction_type == "P" else "Sell" if txn.transaction_type == "S" else txn.transaction_type,
+                "shares": txn.shares,
+                "price": txn.price_per_share,
+                "value": txn.total_value,
+            })
+
+        return {
+            "success": True,
+            "ticker": ticker.upper(),
+            "transaction_count": len(transactions),
+            "by_insider": list(by_insider.values()),
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get insider trades: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+        }
+
+
+@registry.register(
+    name="compare_financials",
+    description="Compare a financial metric across multiple companies",
+    parameters={
+        "type": "object",
+        "properties": {
+            "tickers": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "List of ticker symbols to compare",
+                "minItems": 2,
+                "maxItems": 5,
+            },
+            "metric": {
+                "type": "string",
+                "description": "Financial metric to compare",
+                "enum": ["revenue", "net_income", "total_assets", "total_debt", "cash"],
+            },
+        },
+        "required": ["tickers", "metric"],
+    },
+)
+def compare_financials(
+    tickers: list[str],
+    metric: str,
+) -> dict[str, Any]:
+    """Compare a metric across companies."""
+    client = get_edgar_client()
+
+    results = []
+    for ticker in tickers:
+        try:
+            company = client.get_company(ticker)
+
+            # Get latest financials
+            if metric in ["revenue", "net_income"]:
+                statements = client.get_financials(ticker, "income_statement", 1)
+            else:
+                statements = client.get_financials(ticker, "balance_sheet", 1)
+
+            if statements and statements[0].data:
+                value = statements[0].data.get(metric)
+                results.append({
+                    "ticker": ticker.upper(),
+                    "company": company.name,
+                    "metric": metric,
+                    "value": value,
+                    "fiscal_year": statements[0].fiscal_year,
+                })
+            else:
+                results.append({
+                    "ticker": ticker.upper(),
+                    "company": company.name,
+                    "metric": metric,
+                    "value": None,
+                    "error": "Data not available",
+                })
+
+        except Exception as e:
+            results.append({
+                "ticker": ticker.upper(),
+                "error": str(e),
+            })
+
+    # Sort by value (descending) where available
+    results.sort(
+        key=lambda x: x.get("value") or 0,
+        reverse=True,
+    )
+
+    return {
+        "success": True,
+        "metric": metric,
+        "companies": results,
+    }
