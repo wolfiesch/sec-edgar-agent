@@ -38,9 +38,19 @@ User Query → Orchestrator → Planner Agent → Tool Selection → Executor Ag
 ### Key Components
 
 - **Orchestrator** (`src/agents/orchestrator.py`): Coordinates multi-agent workflow with loop detection
-- **Tool Registry** (`src/tools/registry.py`): Registers tools for Claude's tool_use API
+- **Tool Registry** (`src/tools/registry.py`): Registers 24 tools for Claude's tool_use API
 - **EdgarClient** (`src/data/edgar_client.py`): Wraps edgartools with rate limiting (10 req/sec SEC limit)
+- **VectorStore** (`src/data/vector_store.py`): ChromaDB-based semantic search
 - **Citations** (`src/utils/citations.py`): Generates `[TICKER FORM YEAR, Section, Page]` references
+
+### Tool Categories
+
+- **Search**: `get_company_info`, `search_filings`, `list_available_forms`
+- **Fetch**: `get_filing_document`, `get_filing_section`, `get_filing_exhibits`
+- **Financials**: `get_income_statement`, `get_balance_sheet`, `get_cash_flow`, `get_insider_trades`
+- **Analysis**: `analyze_historical_trends`, `compare_companies`, `detect_risk_changes`, `get_sector_peers`
+- **Semantic**: `index_filing`, `semantic_search`, `find_similar_disclosures`
+- **Watchlist**: `add_to_watchlist`, `check_watchlist_updates`, `generate_watchlist_summary`
 
 ### Data Flow
 
