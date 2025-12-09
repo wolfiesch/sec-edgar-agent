@@ -46,7 +46,7 @@ class EdgarClient:
         """
         cache_key = f"company:{ticker.upper()}"
         cached = self.cache.get(cache_key)
-        if cached:
+        if cached is not None:
             return Company.model_validate(cached)
 
         logger.debug(f"Fetching company info for {ticker}")
@@ -89,7 +89,7 @@ class EdgarClient:
         """
         cache_key = f"filings:{ticker.upper()}:{form_type}:{limit}:{start_date}:{end_date}"
         cached = self.cache.get(cache_key)
-        if cached:
+        if cached is not None:
             return [Filing.model_validate(f) for f in cached]
 
         logger.debug(f"Fetching {form_type} filings for {ticker}")
@@ -165,7 +165,7 @@ class EdgarClient:
         """
         cache_key = f"financials:{ticker.upper()}:{statement_type}:{periods}"
         cached = self.cache.get(cache_key)
-        if cached:
+        if cached is not None:
             return [FinancialStatement.model_validate(f) for f in cached]
 
         logger.debug(f"Fetching {statement_type} for {ticker}")
@@ -227,7 +227,7 @@ class EdgarClient:
         """
         cache_key = f"insider:{ticker.upper()}:{limit}"
         cached = self.cache.get(cache_key)
-        if cached:
+        if cached is not None:
             return [InsiderTransaction.model_validate(t) for t in cached]
 
         logger.debug(f"Fetching Form 4 filings for {ticker}")
