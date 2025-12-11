@@ -1,0 +1,43 @@
+Region,Metric,Value_Millions_USD
+Americas,Net sales,178353
+Americas,Cost of sales,-95699
+Americas,Research and development,0
+Americas,Selling and marketing,-10174
+Americas,General and administrative,0
+Americas,Operating income,72480
+Europe,Net sales,111032
+Europe,Cost of sales,-58617
+Europe,Research and development,0
+Europe,Selling and marketing,-4676
+Europe,General and administrative,0
+Europe,Operating income,47739
+Greater China,Net sales,64377
+Greater China,Cost of sales,-35141
+Greater China,Research and development,0
+Greater China,Selling and marketing,-2319
+Greater China,General and administrative,0
+Greater China,Operating income,26917
+Japan,Net sales,28703
+Japan,Cost of sales,-13779
+Japan,Research and development,0
+Japan,Selling and marketing,-969
+Japan,General and administrative,0
+Japan,Operating income,13955
+Rest of Asia Pacific,Net sales,33696
+Rest of Asia Pacific,Cost of sales,-17724
+Rest of Asia Pacific,Research and development,0
+Rest of Asia Pacific,Selling and marketing,-1386
+Rest of Asia Pacific,General and administrative,0
+Rest of Asia Pacific,Operating income,14586
+Corporate,Net sales,0
+Corporate,Cost of sales,0
+Corporate,Research and development,-34550
+Corporate,Selling and marketing,0
+Corporate,General and administrative,-8077
+Corporate,Operating income,-42627
+Total,Net sales,416161
+Total,Cost of sales,-220960
+Total,Research and development,-34550
+Total,Selling and marketing,-19524
+Total,General and administrative,-8077
+Total,Operating income,133050

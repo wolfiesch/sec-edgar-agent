@@ -186,7 +186,12 @@ class ExecutorAgent(BaseAgent):
             result = registry.execute(tool_call["name"], tool_call["input"])
 
             if result.success:
-                return result.result
+                return {
+                    "tool": tool_call["name"],
+                    "arguments": tool_call["input"],
+                    "output": result.result,
+                    "citations": result.citations
+                }
             else:
                 raise Exception(f"Tool {tool_call['name']} failed: {result.error}")
 
@@ -215,6 +220,10 @@ class ExecutorAgent(BaseAgent):
 
     def _summarize_result(self, result: Any) -> str:
         """Create a brief summary of a result."""
+        # Unwrap tool execution result if present
+        if isinstance(result, dict) and "tool" in result and "output" in result:
+             result = result["output"]
+
         if isinstance(result, dict):
             if "error" in result:
                 return f"Error: {result['error']}"

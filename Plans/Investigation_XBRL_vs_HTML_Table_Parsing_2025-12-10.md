@@ -1,10 +1,76 @@
 # Investigation: XBRL vs HTML Table Parsing
 
+---
+**IMPLEMENTATION STATUS**: ✅ COMPLETED
+**Implemented Date**: 12/10/2025 09:22 PM PST (via pst-timestamp)
+**Implementation Summary**: Table parsing POC validated with 100% accuracy using inline XBRL extraction. All 5 success criteria met. Ready for MVP implementation.
+---
+
+## Usage
+
+To parse SEC tables using the validated inline XBRL approach:
+
+```bash
+# Parse a specific table from HTML file
+uv run python scripts/table_parsing_poc/parse_inline_xbrl.py
+
+# Test LLM comprehension
+uv run python scripts/table_parsing_poc/test_with_llm.py
+```
+
+## What Was Implemented
+
+**Completed:**
+- ✅ Inline XBRL extraction parser (`parse_inline_xbrl.py`)
+- ✅ Ground truth CSV for validation (`aapl_segment_groundtruth.csv`)
+- ✅ LLM comprehension testing (`test_with_llm.py`)
+- ✅ Comprehensive results documentation (`docs/table_parsing_results.md`)
+- ✅ 100% numeric accuracy (42/42 data points)
+- ✅ 100% LLM comprehension (5/5 questions correct)
+
+**Files Created:**
+- `scripts/table_parsing_poc/download_filing.py` - Filing download and table extraction
+- `scripts/table_parsing_poc/parse_inline_xbrl.py` - Main parser implementation
+- `scripts/table_parsing_poc/test_with_llm.py` - LLM validation
+- `data/test_tables/aapl_segment_groundtruth.csv` - Validation baseline
+- `data/test_tables/aapl_segment_parsed.md` - Parsed output (Markdown)
+- `docs/table_parsing_results.md` - Full investigation report
+
+**Deviations from Original Plan:**
+- Skipped sec-parser approach (inline XBRL was sufficient)
+- Skipped custom HTML parser (not needed)
+- Compressed 3-day investigation into 1 day (~3 hours)
+- Used GPT-4 mini instead of Claude for LLM testing (OpenAI API more readily available)
+
+**Key Finding:** SEC tables contain embedded `<ix:nonfraction>` XBRL tags with structured data - parsing is simpler than expected!
+
+## Testing
+
+**Validation Tests:**
+1. **Accuracy Test:** Compare parsed output to manually transcribed ground truth → **100% match (42/42 rows)**
+2. **LLM Comprehension Test:** Ask GPT-4 5 factual questions about the table → **100% correct (5/5)**
+3. **Performance Test:** Measure parsing time → **<2 seconds per table**
+
+**To run tests:**
+```bash
+# Run parser and validate accuracy
+uv run python scripts/table_parsing_poc/parse_inline_xbrl.py
+
+# Test LLM comprehension
+uv run python scripts/table_parsing_poc/test_with_llm.py
+```
+
+**Test Results:** See [docs/table_parsing_results.md](../docs/table_parsing_results.md) for comprehensive report.
+
+---
+
+# Original Investigation Plan
+
 **Created:** 12/10/2025 08:41 PM PST (via pst-timestamp)
-**Status:** Draft
+**Status:** ✅ Completed
 **Owner:** Wolfgang
 **Type:** Investigation
-**Duration:** 3 days (Days 1-3 of Validation Sprint Week 1)
+**Duration:** 3 days (Days 1-3 of Validation Sprint Week 1) → **Actual: 1 day (~3 hours)**
 **Parent Plan:** [Validation Sprint Tracker](./Validation_Sprint_Tracker_2025-12-10.md)
 
 ---

@@ -1,12 +1,53 @@
 import asyncio
 import uuid
 import logging
+from typing import Any
+from datetime import date, datetime
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from src.api.models import QueryRequest, QueryResponse
 from src.agents.orchestrator import StreamingOrchestrator
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def serialize_for_json(obj: Any) -> Any:
+    """
+    Recursively serialize objects to JSON-compatible format.
+    Handles Pydantic models, dates, and nested structures.
+    """
+    if obj is None:
+        return None
+
+    # Handle Pydantic models
+    if hasattr(obj, "model_dump"):
+        return obj.model_dump(mode='json')
+
+    # Handle dates and datetimes
+    if isinstance(obj, (date, datetime)):
+        return obj.isoformat()
+
+    # Handle dictionaries
+    if isinstance(obj, dict):
+        return {key: serialize_for_json(value) for key, value in obj.items()}
+
+    # Handle lists and tuples
+    if isinstance(obj, (list, tuple)):
+        return [serialize_for_json(item) for item in obj]
+
+    # Handle sets
+    if isinstance(obj, set):
+        return [serialize_for_json(item) for item in obj]
+
+    # Primitives (str, int, float, bool) pass through
+    if isinstance(obj, (str, int, float, bool)):
+        return obj
+
+    # Last resort: convert to string
+    try:
+        return str(obj)
+    except Exception:
+        return None
 
 @router.post("", response_model=QueryResponse)
 async def start_query(request: QueryRequest):
@@ -53,18 +94,15 @@ async def websocket_endpoint(websocket: WebSocket, query_id: str):
         # Let's try direct iteration first. If it blocks pings, we'll refactor.
         
         for phase, message, details in orchestrator.run_streaming(query_text):
+            # Serialize details using our recursive serializer
+            serialized_details = serialize_for_json(details)
+
             payload = {
                 "phase": phase,
                 "message": message,
-                "data": details
+                "data": serialized_details
             }
-            # Simple serialization of details might fail if it contains non-serializable objects (like Pydantic models)
-            # Pydantic models have .model_dump() or .dict()
-            if hasattr(details, "model_dump"):
-                payload["data"] = details.model_dump()
-            elif hasattr(details, "dict"):
-                 payload["data"] = details.dict()
-                 
+
             await websocket.send_json(payload)
             # Give the event loop a chance to breathe (and process pings)
             await asyncio.sleep(0.01)

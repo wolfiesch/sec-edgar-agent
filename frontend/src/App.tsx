@@ -1,21 +1,41 @@
 import { QueryInput } from './components/QueryInput';
 import { WorkflowTimeline } from './components/WorkflowTimeline';
 import { ResponsePanel } from './components/ResponsePanel';
+import { QueryHistory } from './components/QueryHistory';
 import { useQuery } from './hooks/useQuery';
-import { Layout } from 'lucide-react';
+import { useQueryHistory } from './hooks/useQueryHistory';
+import { Layout, History as HistoryIcon } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 function App() {
   const {
     submitQuery,
     events,
     isProcessing,
+    reset,
+    queryId,
+    query
   } = useQuery();
+
+  const { history, addToHistory, clearHistory } = useQueryHistory();
+  const [showHistory, setShowHistory] = useState(false);
+
+  // Auto-save history when queryId is generated
+  useEffect(() => {
+    if (queryId && query) {
+      addToHistory(query, queryId);
+    }
+  }, [queryId, query, addToHistory]);
+
+  const handleQuerySubmit = (q: string) => {
+      submitQuery(q);
+      setShowHistory(false);
+  };
 
   // Extract final answer from events if available
   const completionEvent = events.find(e => e.phase === 'complete');
   const finalAnswer = completionEvent ? completionEvent.message : null;
-  
-  // Or maybe synthesis event has partial? For now use completion.
+  const hasResult = events.length > 0;
   
   return (
     <div className="min-h-screen bg-gray-950 text-white font-sans selection:bg-blue-500/30">
@@ -30,14 +50,33 @@ function App() {
                         SEC Edgar Agent
                     </h1>
                 </div>
-                <div className="text-sm text-gray-500">
-                    v0.1.0-alpha
+                <div className="flex items-center gap-4 text-sm">
+                    <button 
+                        onClick={() => setShowHistory(!showHistory)}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors ${showHistory ? 'bg-gray-800 text-blue-400' : 'text-gray-400 hover:text-gray-200'}`}
+                    >
+                        <HistoryIcon className="w-4 h-4" />
+                        <span className="hidden sm:inline">History</span>
+                    </button>
+                    <div className="text-gray-500">v0.1.0-alpha</div>
                 </div>
             </div>
         </header>
 
         {/* Main Content */}
-        <main className="container mx-auto px-4 py-8 max-w-7xl">
+        <main className="container mx-auto px-4 py-8 max-w-7xl relative">
+            
+            {/* History Dropdown (Absolute/Overlay for simple implementation) */}
+            {showHistory && (
+                <div className="absolute top-0 right-4 z-20 w-80 shadow-2xl animate-in fade-in slide-in-from-top-2">
+                    <QueryHistory 
+                        history={history} 
+                        onSelect={handleQuerySubmit} 
+                        onClear={clearHistory} 
+                    />
+                </div>
+            )}
+
             {/* Search Section */}
             <div className="mb-12 text-center space-y-4">
                 <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-gray-100">
@@ -46,7 +85,12 @@ function App() {
                 <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-8">
                     Ask complex questions about public companies. The agent plans, executes tools, and validates results in real-time.
                 </p>
-                <QueryInput onSubmit={submitQuery} isLoading={isProcessing} />
+                <QueryInput 
+                    onSubmit={handleQuerySubmit} 
+                    isLoading={isProcessing} 
+                    onReset={reset}
+                    hasResult={hasResult}
+                />
             </div>
 
             {/* Workspace Grid */}

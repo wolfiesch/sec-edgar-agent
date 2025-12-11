@@ -19,6 +19,7 @@ export interface ToolExecutionResult {
 export type WorkflowPhase = 
   | 'planning' 
   | 'executing' 
+  | 'task_complete'
   | 'validating' 
   | 'synthesizing' 
   | 'complete' 

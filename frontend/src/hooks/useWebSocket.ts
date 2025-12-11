@@ -7,9 +7,12 @@ export function useWebSocket(queryId: string | null) {
   const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    if (!queryId) return;
+    // Reset state when queryId changes or is cleared
+    if (!queryId) {
+        setEvents([]); 
+        return;
+    }
 
-    // Reset state for new query
     setEvents([]);
     setStatus('connecting');
 
