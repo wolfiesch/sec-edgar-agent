@@ -31,11 +31,13 @@ async def parse_table(request: TableParseRequest):
             structured=result.structured,
             citation=result.citation,
             confidence=result.confidence,
+            section=result.section,
             metadata={
                 "source_method": result.source_method,
                 "ticker": request.ticker,
                 "form_type": request.form_type,
-                "year": request.year
+                "year": request.year,
+                "table_type": request.table_name
             }
         )
     except ValueError as e:

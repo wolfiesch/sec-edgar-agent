@@ -1,6 +1,6 @@
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
+
 from ..models import ParsedTable
-from ..exceptions import ParsingError
 
 if TYPE_CHECKING:
     from ..client import SecClient
@@ -16,7 +16,7 @@ class TablesResource:
         ticker: str,
         form: str,
         table: str,
-        year: Optional[int] = None
+        year: int | None = None
     ) -> ParsedTable:
         """
         Parse a table from SEC filing.

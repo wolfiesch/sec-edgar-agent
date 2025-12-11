@@ -1,10 +1,16 @@
+from edgar import set_identity
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from src.data.db import init_db
+
 from .config import settings
-from .routes import health, filings, tables
 from .exceptions import SecApiError
+from .routes import chat, filings, health, ingest, search, tables
+
+# Configure edgartools identity immediately
+set_identity(settings.SEC_USER_AGENT)
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -14,8 +20,9 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-from edgar import set_identity
-set_identity(settings.SEC_USER_AGENT)
+@app.on_event("startup")
+def on_startup():
+    init_db()
 
 # CORS configuration
 app.add_middleware(
@@ -34,9 +41,12 @@ async def sec_api_exception_handler(request: Request, exc: SecApiError):
     )
 
 # Include routers
-app.include_router(health.router, tags=["health"])
-app.include_router(filings.router, prefix=f"{settings.API_V1_STR}/filings", tags=["filings"])
-app.include_router(tables.router, prefix=f"{settings.API_V1_STR}/tables", tags=["tables"])
+app.include_router(health.router, prefix="/health", tags=["Health"])
+app.include_router(filings.router, prefix=f"{settings.API_V1_STR}/filings", tags=["Filings"])
+app.include_router(tables.router, prefix=f"{settings.API_V1_STR}/tables", tags=["Tables"])
+app.include_router(search.router, prefix=f"{settings.API_V1_STR}/search", tags=["Search"])
+app.include_router(ingest.router, prefix=f"{settings.API_V1_STR}/ingest", tags=["Ingestion"])
+app.include_router(chat.router, prefix=f"{settings.API_V1_STR}/chat", tags=["Chat"])
 
 @app.get("/")
 async def root():

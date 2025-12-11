@@ -25,6 +25,10 @@ class Settings(BaseSettings):
         default="gpt-4o",
         description="OpenAI model to use (e.g., gpt-4o, gpt-4-turbo, gpt-3.5-turbo)",
     )
+    api_key: str = Field(
+        default="sec-api-demo",
+        description="API Key for ingestion endpoints",
+    )
 
     # SEC EDGAR
     sec_user_agent: str = Field(
@@ -50,6 +54,10 @@ class Settings(BaseSettings):
     chroma_persist_dir: Path = Field(
         default=Path("./data/chroma"),
         description="Directory for ChromaDB persistence",
+    )
+    sqlite_db_path: Path = Field(
+        default=Path("./data/sec_agent.db"),
+        description="Path to SQLite database",
     )
 
     # Logging

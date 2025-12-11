@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
+
 from ..models import Filing
 
 if TYPE_CHECKING:
@@ -14,7 +15,7 @@ class FilingsResource:
         self,
         ticker: str,
         form: str,
-        year: Optional[int] = None
+        year: int | None = None
     ) -> Filing:
         """
         Get metadata for a specific filing.
@@ -27,7 +28,7 @@ class FilingsResource:
         params = {}
         if year:
             params["year"] = year
-            
+
         response = self._client._request(
             "GET",
             f"/api/v1/filings/{ticker}/{form}",

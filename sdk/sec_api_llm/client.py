@@ -1,42 +1,37 @@
-from typing import Optional, Dict
+import os
+
 import httpx
 
+from .exceptions import AuthenticationError, NotFoundError, SecApiError
 from .resources.filings import FilingsResource
 from .resources.tables import TablesResource
-from .exceptions import SecApiError, NotFoundError, AuthenticationError
+
 
 class SecClient:
     """
-    Python client for SEC API for LLMs.
-
-    Usage:
-        client = SecClient(api_key="sk-...")
-        table = client.tables.parse(ticker="AAPL", form="10-K", table="segment_info")
-        print(table.markdown)
+    Main client for SEC Edgar Agent API.
     """
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        base_url: str = "http://localhost:8000",
-        timeout: int = 30
+        api_key: str | None = None,
+        base_url: str = "http://localhost:8000/api/v1"
     ):
-        self.api_key = api_key
         self.base_url = base_url.rstrip("/")
-        self.timeout = timeout
+        self.api_key = api_key or os.getenv("SEC_API_KEY")
 
         # HTTP client
         self._client = httpx.Client(
             base_url=self.base_url,
-            timeout=timeout,
-            headers=self._get_headers()
+            headers={"X-API-Key": self.api_key} if self.api_key else {},
+            timeout=60.0
         )
 
         # Resources
         self.filings = FilingsResource(self)
         self.tables = TablesResource(self)
 
-    def _get_headers(self) -> Dict[str, str]:
+    def _get_headers(self) -> dict[str, str]:
         headers = {"Content-Type": "application/json"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"

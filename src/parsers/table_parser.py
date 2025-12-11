@@ -12,6 +12,33 @@ class ParsedTable:
     citation: str
     confidence: str  # "high", "medium", "low"
     source_method: str  # "inline-xbrl"
+    section: Optional[str] = None  # e.g., "Item 8"
+
+# Table type configurations for section detection and ordering
+TABLE_CONFIGS = {
+    "segment_information": {
+        "section": "Item 8",
+        "description": "Segment Operating Performance",
+        "metric_order": [
+            "Net sales",
+            "Cost of sales",
+            "Research and development",
+            "Selling and marketing",
+            "General and administrative",
+            "Operating income",
+        ],
+    },
+    "revenue_by_geography": {
+        "section": "Item 8",
+        "description": "Revenue by Geographic Region",
+        "metric_order": ["Net sales"],
+    },
+    "balance_sheet": {
+        "section": "Item 8",
+        "description": "Consolidated Balance Sheet",
+        "metric_order": [],  # Would be customized for balance sheet
+    },
+}
 
 class TableParser:
     """Production table parser using inline XBRL extraction."""
@@ -26,7 +53,7 @@ class TableParser:
             "c-154": "Corporate",
             "c-1": "Total",
         }
-        # Metrics map not fully utilized in POC but good to have if we expand
+        # Metrics map for XBRL tag name to display name
         self.metrics_map = {
              "Revenue": "Net sales",
              "CostOfGoodsAndServicesSold": "Cost of sales",
@@ -36,18 +63,23 @@ class TableParser:
              "OperatingIncomeLoss": "Operating income",
         }
 
-    def parse_from_html(self, html_content: str, filing_info: dict) -> ParsedTable:
+    def parse_from_html(self, html_content: str, filing_info: dict, table_identifier: str = "segment_information") -> ParsedTable:
         """Parse table from HTML using inline XBRL tags."""
         soup = BeautifulSoup(html_content, "lxml")
         xbrl_tags = soup.find_all("ix:nonfraction")
+
+        # Get table configuration for section and ordering
+        table_config = TABLE_CONFIGS.get(table_identifier, TABLE_CONFIGS["segment_information"])
+        section = table_config.get("section", "Item 8")
 
         if not xbrl_tags:
             return ParsedTable(
                 markdown="",
                 structured=[],
-                citation=f"[{filing_info.get('ticker')} {filing_info.get('form_type')}]",
+                citation=f"[{filing_info.get('ticker')} {filing_info.get('form_type')}, {section}]",
                 confidence="low",
-                source_method="inline-xbrl"
+                source_method="inline-xbrl",
+                section=section
             )
 
         data_rows = []
@@ -107,22 +139,25 @@ class TableParser:
              return ParsedTable(
                 markdown="",
                 structured=[],
-                citation=f"[{filing_info.get('ticker')} {filing_info.get('form_type')}]",
+                citation=f"[{filing_info.get('ticker')} {filing_info.get('form_type')}, {section}]",
                 confidence="low",
-                source_method="inline-xbrl"
+                source_method="inline-xbrl",
+                section=section
              )
 
         df = df.drop_duplicates()
-        
+
         # Filling zeros logic (simplified from POC)
-        # For now, let's just return what we extracted to be safe, 
+        # For now, let's just return what we extracted to be safe,
         # or implement the filling if critical. POC had filling logic.
         # I'll include basic filling to match POC quality.
         all_regions = ["Americas", "Europe", "Greater China", "Japan", "Rest of Asia Pacific", "Corporate", "Total"]
-        all_metrics = [
-            "Net sales", "Cost of sales", "Research and development", 
+
+        # Use ordered metrics from table config (revenue → expenses → profit flow)
+        all_metrics = table_config.get("metric_order", [
+            "Net sales", "Cost of sales", "Research and development",
             "Selling and marketing", "General and administrative", "Operating income"
-        ]
+        ])
         
         complete_rows = []
         for region in all_regions:
@@ -143,23 +178,29 @@ class TableParser:
 
         # Pivot for markdown
         pivot = df.pivot(index="Metric", columns="Region", values="Value_Millions_USD")
-        
-        # Sort columns
+
+        # Sort columns (regions)
         column_order = [c for c in all_regions if c in pivot.columns]
         pivot = pivot[column_order]
 
+        # Sort rows (metrics) in logical order: revenue → expenses → profit
+        row_order = [m for m in all_metrics if m in pivot.index]
+        pivot = pivot.reindex(row_order)
+
         markdown = pivot.fillna("").to_markdown()
         structured = df.to_dict("records")
-        
+
+        # Build citation with section: [AAPL 10-K 2024, Item 8]
         year_str = f" {filing_info.get('year')}" if filing_info.get('year') else ""
-        citation_str = f"[{filing_info.get('ticker')} {filing_info.get('form_type')}{year_str}]"
+        citation_str = f"[{filing_info.get('ticker')} {filing_info.get('form_type')}{year_str}, {section}]"
 
         return ParsedTable(
             markdown=markdown,
             structured=structured,
             citation=citation_str,
             confidence="high",
-            source_method="inline-xbrl"
+            source_method="inline-xbrl",
+            section=section
         )
 
     def parse_from_filing(
@@ -200,12 +241,13 @@ class TableParser:
         if not html_content:
             raise ValueError("Could not retrieve HTML content from filing")
 
-        # 3. Parse
+        # 3. Parse with table identifier for section detection and ordering
         return self.parse_from_html(
-            html_content, 
+            html_content,
             {
-                "ticker": ticker, 
-                "form_type": form_type, 
+                "ticker": ticker,
+                "form_type": form_type,
                 "year": selected_filing.filing_date.year
-            }
+            },
+            table_identifier=table_identifier
         )

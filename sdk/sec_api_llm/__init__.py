@@ -1,6 +1,6 @@
 from .client import SecClient
-from .exceptions import SecApiError, AuthenticationError, NotFoundError, ParsingError
-from .models import ParsedTable, Filing
+from .exceptions import AuthenticationError, NotFoundError, ParsingError, SecApiError
+from .models import Filing, ParsedTable
 
 __all__ = [
     "SecClient",

@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - CHROMA_PERSIST_DIR=/app/data/chroma
+      - SQLITE_DB_PATH=/app/data/job_tracking.db
+      - SEC_USER_AGENT=${SEC_USER_AGENT:-"DemoUser email@example.com"}
+      - API_KEY=${API_KEY:-"sec-api-demo"}
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped

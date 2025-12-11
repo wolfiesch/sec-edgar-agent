@@ -1,5 +1,9 @@
-from typing import Generator
+from fastapi import Depends
+from sqlmodel import Session
 
-def get_db():
-    """Placeholder for future database session dependency."""
-    yield None
+from src.data.db import get_session
+
+
+def get_db(session: Session = Depends(get_session)):
+    """Yield database session."""
+    return session

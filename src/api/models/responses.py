@@ -1,13 +1,14 @@
+
 from pydantic import BaseModel
-from typing import Optional, List, Dict
+
 
 class Citation(BaseModel):
     """Source citation for data."""
     ticker: str
     form_type: str
     filing_date: str
-    section: Optional[str] = None
-    page: Optional[int] = None
+    section: str | None = None
+    page: int | None = None
 
     def to_string(self) -> str:
         """Format as [TICKER FORM YEAR, Section, Page]"""
@@ -22,10 +23,11 @@ class Citation(BaseModel):
 class ParsedTableResponse(BaseModel):
     """Response containing parsed table data."""
     markdown: str
-    structured: List[Dict]
+    structured: list[dict]
     citation: str
     confidence: str
-    metadata: Dict
+    section: str | None = None  # e.g., "Item 8"
+    metadata: dict
 
 class FilingResponse(BaseModel):
     """Filing metadata response."""
@@ -35,4 +37,18 @@ class FilingResponse(BaseModel):
     accession_no: str
     url: str
     citation: str
-    sections_available: List[str]
+    sections_available: list[str]
+
+
+class SearchResult(BaseModel):
+    """Single search result item."""
+    content: str
+    citation: str
+    metadata: dict
+    distance: float | None = None
+
+
+class SearchResponse(BaseModel):
+    """Response model for search endpoint."""
+    results: list[SearchResult]
+    total: int
