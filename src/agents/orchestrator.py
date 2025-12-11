@@ -4,7 +4,7 @@ import logging
 import time
 from typing import Any
 
-from src.agents.base import AgentContext, AgentResponse, Plan
+from src.agents.base import AgentContext, Plan
 from src.agents.executor import ExecutorAgent
 from src.agents.planner import PlannerAgent
 from src.agents.synthesizer import SynthesizerAgent
@@ -53,6 +53,9 @@ class Orchestrator:
             max_steps=self.max_steps,
         )
 
+        max_retries = 3
+        retries = 0
+
         try:
             # Step 1: Planning
             self.logger.info("Phase 1: Planning")
@@ -60,25 +63,48 @@ class Orchestrator:
             if not plan_response.success:
                 return f"Failed to create plan: {plan_response.error}"
 
-            # Step 2: Execution
-            self.logger.info("Phase 2: Execution")
-            while context.step_count < context.max_steps:
-                exec_response = self.executor.run(context)
+            # Validation retry loop
+            while retries < max_retries:
+                # Step 2: Execution
+                attempt_msg = f" (attempt {retries + 1}/{max_retries})" if retries > 0 else ""
+                self.logger.info(f"Phase 2: Execution{attempt_msg}")
 
-                if not exec_response.should_continue:
-                    break
+                while context.step_count < context.max_steps:
+                    exec_response = self.executor.run(context)
 
-                if not exec_response.success:
-                    self.logger.warning(f"Execution step failed: {exec_response.error}")
-                    # Continue with other tasks if possible
-                    continue
+                    if not exec_response.should_continue:
+                        break
 
-            # Step 3: Validation (skip for simple queries)
-            if context.plan and not context.plan.is_simple:
-                self.logger.info("Phase 3: Validation")
-                val_response = self.validator.run(context)
-                if val_response.content and not val_response.content.get("valid", True):
-                    self.logger.warning(f"Validation issues: {val_response.content.get('issues')}")
+                    if not exec_response.success:
+                        self.logger.warning(f"Execution step failed: {exec_response.error}")
+                        # Continue with other tasks if possible
+                        continue
+
+                # Step 3: Validation (skip for simple queries)
+                if context.plan and not context.plan.is_simple:
+                    self.logger.info(f"Phase 3: Validation{attempt_msg}")
+                    val_response = self.validator.run(context)
+
+                    if val_response.content and not val_response.content.get("valid", True):
+                        issues = val_response.content.get("issues", [])
+                        suggestions = val_response.content.get("suggestions", [])
+                        confidence = val_response.content.get("confidence", 0.0)
+
+                        self.logger.warning(
+                            f"Validation failed (attempt {retries + 1}/{max_retries}): "
+                            f"confidence={confidence:.2f}, issues={issues}"
+                        )
+
+                        # Add correction tasks and retry
+                        if retries < max_retries - 1:  # Don't add corrections on last attempt
+                            self._add_correction_tasks(context, issues, suggestions)
+                            retries += 1
+                            continue
+                        else:
+                            self.logger.warning("Max retries reached, proceeding with current results")
+
+                # Validation passed or not needed
+                break
 
             # Step 4: Synthesis
             self.logger.info("Phase 4: Synthesis")
@@ -88,7 +114,7 @@ class Orchestrator:
             self.logger.info(f"Orchestration complete in {elapsed:.2f}s")
 
             if synth_response.success:
-                return synth_response.content
+                return str(synth_response.content)
             else:
                 return f"Failed to synthesize response: {synth_response.error}"
 
@@ -112,6 +138,56 @@ class Orchestrator:
             "citations": [str(c) for c in result.citations],
         }
 
+    def _add_correction_tasks(
+        self,
+        context: AgentContext,
+        issues: list[str],
+        suggestions: list[str],
+    ) -> None:
+        """
+        Add correction tasks to the plan based on validation feedback.
+
+        Args:
+            context: Current agent context
+            issues: List of validation issues identified
+            suggestions: List of suggestions for fixing the issues
+        """
+        from src.agents.base import Task, TaskStatus
+
+        if not context.plan:
+            return
+
+        initial_task_count = len(context.plan.tasks)
+
+        # Create correction tasks from suggestions
+        for i, suggestion in enumerate(suggestions):
+            correction_task = Task(
+                id=f"correction_{initial_task_count + i + 1}",
+                description=f"Correction: {suggestion}",
+                tool_hint=None,  # Let executor determine best tool
+                status=TaskStatus.PENDING,
+                dependencies=[],
+            )
+            context.plan.tasks.append(correction_task)
+            self.logger.info(f"Added correction task: {suggestion}")
+
+        # If no suggestions provided, create a generic retry task from issues
+        if not suggestions and issues:
+            # Take up to 2 issues to keep the task description manageable
+            issue_summary = "; ".join(issues[:2])
+            correction_task = Task(
+                id=f"correction_{initial_task_count + 1}",
+                description=f"Address validation issues: {issue_summary}",
+                tool_hint=None,
+                status=TaskStatus.PENDING,
+                dependencies=[],
+            )
+            context.plan.tasks.append(correction_task)
+            self.logger.info(f"Added generic correction task for issues: {issue_summary}")
+
+        added_count = len(context.plan.tasks) - initial_task_count
+        self.logger.info(f"Added {added_count} correction task(s) to plan")
+
 
 class StreamingOrchestrator(Orchestrator):
     """
@@ -120,7 +196,7 @@ class StreamingOrchestrator(Orchestrator):
     Useful for CLI/UI that wants to show progress.
     """
 
-    def run_streaming(self, query: str):
+    def run_streaming(self, query: str) -> Any:  # noqa: ANN401
         """
         Execute workflow with streaming progress updates.
 
@@ -135,6 +211,9 @@ class StreamingOrchestrator(Orchestrator):
             max_steps=self.max_steps,
         )
 
+        max_retries = 3
+        retries = 0
+
         try:
             # Phase 1: Planning
             yield ("planning", "Analyzing your query...", None)
@@ -147,29 +226,65 @@ class StreamingOrchestrator(Orchestrator):
             plan: Plan = plan_response.content
             yield ("planned", f"Created plan with {len(plan.tasks)} tasks", plan)
 
-            # Phase 2: Execution
-            yield ("executing", "Executing research tasks...", None)
+            # Validation retry loop
+            while retries < max_retries:
+                # Phase 2: Execution
+                attempt_msg = f" (attempt {retries + 1}/{max_retries})" if retries > 0 else ""
+                yield ("executing", f"Executing research tasks{attempt_msg}...", None)
 
-            while context.step_count < context.max_steps:
-                exec_response = self.executor.run(context)
+                while context.step_count < context.max_steps:
+                    exec_response = self.executor.run(context)
 
-                if context.tool_results:
-                    last_result = context.tool_results[-1]
-                    yield (
-                        "task_complete",
-                        f"Completed: {last_result['task_description']}",
-                        last_result,
-                    )
+                    if context.tool_results:
+                        last_result = context.tool_results[-1]
+                        yield (
+                            "task_complete",
+                            f"Completed: {last_result['task_description']}",
+                            last_result,
+                        )
 
-                if not exec_response.should_continue:
-                    break
+                    if not exec_response.should_continue:
+                        break
 
-            # Phase 3: Validation (conditional)
-            if context.plan and not context.plan.is_simple:
-                yield ("validating", "Validating results...", None)
-                val_response = self.validator.run(context)
-                if val_response.content:
-                    yield ("validated", "Results validated", val_response.content)
+                # Phase 3: Validation (conditional)
+                if context.plan and not context.plan.is_simple:
+                    yield ("validating", f"Validating results{attempt_msg}...", None)
+                    val_response = self.validator.run(context)
+
+                    if val_response.content:
+                        is_valid = val_response.content.get("valid", True)
+                        if is_valid:
+                            yield ("validated", "Results validated", val_response.content)
+                        else:
+                            issues = val_response.content.get("issues", [])
+                            suggestions = val_response.content.get("suggestions", [])
+                            confidence = val_response.content.get("confidence", 0.0)
+
+                            yield (
+                                "validation_failed",
+                                f"Validation failed (confidence={confidence:.2f})",
+                                {"issues": issues, "suggestions": suggestions, "attempt": retries + 1},
+                            )
+
+                            # Add correction tasks and retry
+                            if retries < max_retries - 1:
+                                self._add_correction_tasks(context, issues, suggestions)
+                                yield (
+                                    "retrying",
+                                    "Adding correction tasks and retrying...",
+                                    {"correction_count": len(suggestions) or 1},
+                                )
+                                retries += 1
+                                continue
+                            else:
+                                yield (
+                                    "warning",
+                                    "Max retries reached, proceeding with current results",
+                                    None,
+                                )
+
+                # Validation passed or not needed
+                break
 
             # Phase 4: Synthesis
             yield ("synthesizing", "Generating response...", None)

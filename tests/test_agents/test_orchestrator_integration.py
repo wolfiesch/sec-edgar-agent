@@ -314,3 +314,168 @@ class TestOrchestratorErrorHandling:
             assert isinstance(result, str)
             # Should reach synthesizer despite failures
             assert mock_call_llm.call_count >= 1
+
+    @patch("src.agents.base.BaseAgent._call_llm")
+    def test_validation_retry_loop(self, mock_call_llm: MagicMock) -> None:
+        """Test that orchestrator retries on validation failure."""
+        # Mock planner response - complex plan
+        plan_json = """{
+            "reasoning": "Need to fetch company info and financials",
+            "is_simple": false,
+            "tasks": [
+                {
+                    "id": "task_1",
+                    "description": "Get Apple company information",
+                    "tool_hint": "get_company_info",
+                    "dependencies": []
+                }
+            ]
+        }"""
+
+        # Mock validator responses: first fails, then succeeds
+        validation_failed = json.dumps({
+            "valid": False,
+            "confidence": 0.4,
+            "issues": ["Missing revenue data", "Incomplete response"],
+            "suggestions": ["Fetch income statement for revenue data"],
+        })
+
+        validation_success = json.dumps({
+            "valid": True,
+            "confidence": 0.95,
+            "issues": [],
+            "suggestions": [],
+        })
+
+        mock_call_llm.side_effect = [
+            # Planner
+            {"content": plan_json, "tool_calls": None, "finish_reason": "stop", "usage": {"input_tokens": 100, "output_tokens": 50}},
+            # Executor - first task
+            {"content": None, "tool_calls": [create_tool_call("toolu_1", "get_company_info", {"ticker": "AAPL"})], "finish_reason": "tool_calls", "usage": {"input_tokens": 100, "output_tokens": 50}},
+            # Validator - FAIL
+            {"content": validation_failed, "tool_calls": None, "finish_reason": "stop", "usage": {"input_tokens": 100, "output_tokens": 50}},
+            # Executor - correction task
+            {"content": None, "tool_calls": [create_tool_call("toolu_2", "get_income_statement", {"ticker": "AAPL"})], "finish_reason": "tool_calls", "usage": {"input_tokens": 100, "output_tokens": 50}},
+            # Validator - SUCCESS
+            {"content": validation_success, "tool_calls": None, "finish_reason": "stop", "usage": {"input_tokens": 100, "output_tokens": 50}},
+            # Synthesizer
+            {"content": "Apple Inc. has revenue of $100B.", "tool_calls": None, "finish_reason": "stop", "usage": {"input_tokens": 100, "output_tokens": 50}},
+        ]
+
+        orchestrator = Orchestrator()
+
+        with patch("src.agents.executor.registry.execute") as mock_execute:
+            from src.data.models import ToolResult
+
+            # Mock tool executions
+            mock_execute.side_effect = [
+                ToolResult(
+                    tool_name="get_company_info",
+                    success=True,
+                    result={"ticker": "AAPL", "name": "Apple Inc.", "cik": "0000320193"},
+                    execution_time_ms=100,
+                ),
+                ToolResult(
+                    tool_name="get_income_statement",
+                    success=True,
+                    result={
+                        "ticker": "AAPL",
+                        "statements": [{"fiscal_year": 2024, "data": {"Revenue": 100000000000}}],
+                    },
+                    execution_time_ms=200,
+                ),
+            ]
+
+            result = orchestrator.run("What is Apple's revenue?")
+
+            assert isinstance(result, str)
+            # Should call: planner, executor (2x for retry), validator (2x), synthesizer
+            assert mock_call_llm.call_count == 6
+            assert mock_execute.call_count == 2
+
+    def test_validation_max_retries(self) -> None:
+        """Test that orchestrator stops after max retries."""
+        from src.agents.base import AgentResponse, Task, TaskStatus
+
+        orchestrator = Orchestrator()
+
+        # Track validation calls
+        validation_count = 0
+
+        def mock_validator_run(context: AgentContext) -> AgentResponse:
+            nonlocal validation_count
+            validation_count += 1
+            # Always return invalid to trigger retries
+            return AgentResponse(
+                success=True,
+                content={
+                    "valid": False,
+                    "confidence": 0.3,
+                    "issues": ["Data incomplete"],
+                    "suggestions": ["Fetch more data"] if validation_count < 3 else [],
+                },
+                should_continue=False,
+            )
+
+        # Create a plan to inject
+        test_plan = Plan(
+            query="Test query",
+            reasoning="Complex query",
+            is_simple=False,
+            tasks=[
+                Task(
+                    id="task_1",
+                    description="Get company info",
+                    tool_hint="get_company_info",
+                    status=TaskStatus.PENDING,
+                    dependencies=[],
+                )
+            ],
+        )
+
+        def mock_planner_run(context: AgentContext) -> AgentResponse:
+            # Side effect: set context.plan
+            context.plan = test_plan
+            return AgentResponse(
+                success=True,
+                content=test_plan,
+                should_continue=True,
+            )
+
+        # Patch the validator to always fail
+        with (
+            patch.object(orchestrator.validator, "run", side_effect=mock_validator_run),
+            patch.object(orchestrator.planner, "run", side_effect=mock_planner_run) as mock_planner,
+            patch.object(orchestrator.executor, "run") as mock_executor,
+            patch.object(orchestrator.synthesizer, "run") as mock_synthesizer,
+        ):
+
+            # Mock executor to complete tasks
+            execution_count = 0
+
+            def mock_executor_run(context: AgentContext) -> AgentResponse:
+                nonlocal execution_count
+                execution_count += 1
+                # Find and complete next pending task
+                if context.plan:
+                    for task in context.plan.tasks:
+                        if task.status == TaskStatus.PENDING:
+                            task.status = TaskStatus.COMPLETED
+                            task.result = {"ticker": "AAPL"}
+                            return AgentResponse(success=True, content=task.result, should_continue=False)
+                return AgentResponse(success=True, content=None, should_continue=False)
+
+            mock_executor.side_effect = mock_executor_run
+
+            # Mock synthesizer
+            mock_synthesizer.return_value = AgentResponse(
+                success=True, content="Final result", should_continue=False
+            )
+
+            result = orchestrator.run("Complex query")
+
+            # Verify validation was called 3 times (max retries)
+            assert validation_count == 3
+            # Verify we eventually synthesized a result
+            assert isinstance(result, str)
+            assert mock_synthesizer.call_count == 1
