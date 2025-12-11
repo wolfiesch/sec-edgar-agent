@@ -1270,11 +1270,447 @@ If not → Reassess or pivot
 
 ---
 
+## Full-Time Founder Accelerated Timeline
+
+> **Context:** Full-time commitment + 1-year financial runway dramatically accelerates all phases. Original timelines assumed part-time work (10-20 hrs/week). Updated below for full-time (40-50 hrs/week).
+
+### Summary: Validation → Revenue in 3-5 Months
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                  FULL-TIME FOUNDER TIMELINE                          │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  Weeks 1-2       Weeks 3-6       Weeks 7-10      Weeks 11-16        │
+│  ──────────      ──────────      ──────────      ──────────         │
+│  Validation      MVP Build       Beta Launch     Public Launch      │
+│                                                                      │
+│  ▼               ▼               ▼               ▼                  │
+│  Technical +     Core API +      50 users +      1,000+ users       │
+│  Market proof    Python SDK      Iteration       Revenue!           │
+│                                                                      │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  Month 4-6: Growth Phase                                            │
+│  - Target: $25-50k MRR (seed fundable metrics)                      │
+│  - 100-200 paying customers                                         │
+│  - Decision: Bootstrap or raise seed round                          │
+│                                                                      │
+│  Month 7-12: Scale Phase                                            │
+│  - Bootstrap path: $100k MRR → profitable                           │
+│  - VC path: $100k+ MRR → Series A track                             │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Phase 1: Validation Sprint (Weeks 1-2) ⚡
+
+**Time Commitment:** 40-50 hours/week
+**Original Estimate:** 4 weeks part-time → **Compressed to 2 weeks full-time**
+
+| Week | Focus | Daily Effort | Deliverable |
+|------|-------|--------------|-------------|
+| **Week 1** | Technical + Market | 8 hrs/day | Table POC + 10 user interviews |
+| **Week 2** | Competitive + Demand | 8 hrs/day | Competitor analysis + 100 waitlist signups |
+
+#### Week 1: Technical + Market Validation (Days 1-7)
+
+**Days 1-3: Table Parsing POC** (24 hours)
+- Day 1 (8h): Environment setup, download AAPL 10-K, identify target table
+- Day 2 (8h): Implement sec-parser + XBRL extraction via EdgarTools
+- Day 3 (8h): Validate with Claude, measure accuracy, document approach
+
+**Days 4-7: User Research** (32 hours)
+- Day 4 (8h): Source 20 interview candidates (Reddit, HN, LinkedIn, Twitter)
+- Days 5-6 (16h): Conduct 10 interviews (1.5 hrs each = 15h + 1h buffer each day)
+- Day 7 (8h): Synthesize findings, document top 3 use cases, price sensitivity
+
+**Week 1 Success Criteria:**
+- [ ] Table parsing works with >95% accuracy
+- [ ] 5+ users said "yes, I'd pay $249/mo"
+- [ ] Clear understanding of must-have features
+
+#### Week 2: Competitive + Demand Validation (Days 8-14)
+
+**Days 8-10: Competitive Analysis** (24 hours)
+- Day 8 (8h): sec-api.io trial - test all features, document gaps
+- Day 9 (8h): Intrinio, Alpha Vantage, Kay.ai trials
+- Day 10 (8h): Create feature gap matrix, document unique value prop
+
+**Days 11-14: Landing Page + Waitlist** (32 hours)
+- Day 11 (8h): Design landing page (Framer/Carrd), write copy
+- Day 12 (8h): Build page, set up waitlist (Tally.so), analytics (Plausible)
+- Day 13 (8h): Launch: HN Show HN post, Reddit (r/algotrading, r/MachineLearning)
+- Day 14 (8h): Engage with community, iterate messaging, track signups
+
+**Week 2 Success Criteria:**
+- [ ] Clear differentiation from sec-api.io documented
+- [ ] 100+ waitlist signups
+- [ ] At least 1 "founding member" willing to pre-pay
+
+#### Go/No-Go Decision (End of Week 2)
+
+| Criterion | Target | Pass? |
+|-----------|--------|-------|
+| Table parsing accuracy | >95% | |
+| Users willing to pay $249/mo | 5+ | |
+| Competitive gap documented | Yes | |
+| Waitlist signups | 100+ | |
+| **Overall** | 4/4 | |
+
+**If 4/4 pass → START MVP BUILD (Week 3)**
+**If 3/4 pass → Address gap over Weekend, then proceed**
+**If <3/4 pass → Major pivot or reassess**
+
+---
+
+### Phase 2: MVP Build (Weeks 3-6) 🚀
+
+**Time Commitment:** 40-50 hours/week
+**Original Estimate:** 8 weeks part-time → **Compressed to 4 weeks full-time**
+
+#### Week 3: Foundation + Ingestion Pipeline (Days 15-21)
+
+**Days 15-16: Infrastructure Setup** (16 hours)
+- Set up monorepo structure (backend + frontend + docs)
+- Deploy to Railway/Render (free tier for now)
+- Configure PostgreSQL + ChromaDB
+- Set up GitHub Actions CI/CD
+- Implement API key authentication
+
+**Days 17-21: Ingestion Pipeline** (40 hours)
+- Migrate existing EdgarClient from sec-edgar-agent repo
+- Build semantic chunker (context-aware, ~500 tokens)
+- Implement citation generator ([TICKER FORM YEAR, Section, Page])
+- Create embedding pipeline (OpenAI `text-embedding-3-small`)
+- Build section tagger (Item 1, Item 1A, MD&A, etc.)
+- **Critical:** Implement table parser from Week 1 POC
+
+#### Week 4: Core API Endpoints (Days 22-28)
+
+**Days 22-24: Search + Metadata APIs** (24 hours)
+- `/v1/search` - semantic search with filters (company, form, year)
+- `/v1/filings/{id}` - filing metadata and section list
+- `/v1/companies/{ticker}` - company info and filing history
+
+**Days 25-28: Chunk API + Rate Limiting** (32 hours)
+- `/v1/chunks/{id}` - chunk detail with citation + embedding
+- Implement rate limiting (tier-based)
+- Usage tracking and analytics
+- Basic error handling and logging
+
+#### Week 5: Data Ingestion + SDK (Days 29-35)
+
+**Days 29-31: Ingest Tech/SaaS Companies** (24 hours)
+- Ingest 10-K and 10-Q data for 100 tech companies (5 years history)
+- Target: AAPL, MSFT, GOOGL, AMZN, META, NVDA, TSLA, CRM, ADBE, ORCL, etc.
+- Validate embeddings and citations
+- Spot-check table parsing accuracy
+
+**Days 32-35: Python SDK + Documentation** (32 hours)
+- Python SDK v0.1 with `search()`, `get_filing()`, `get_chunk()`
+- OpenAPI/Swagger documentation
+- Quick start guide (5-minute integration)
+- 3 sample Jupyter notebooks (basic search, RAG chatbot, risk analysis)
+
+#### Week 6: Developer Experience Polish (Days 36-42)
+
+**Days 36-38: Landing Page + Signup Flow** (24 hours)
+- Public landing page with live API examples
+- Developer signup flow
+- API key generation
+- Usage dashboard (basic)
+
+**Days 39-42: Testing + Private Beta Prep** (32 hours)
+- End-to-end testing (API, SDK, docs)
+- Performance optimization (target <500ms p95 latency)
+- Prepare beta onboarding email sequence
+- Create feedback collection form
+- **DELIVERABLE:** Invite first 20 beta users from waitlist
+
+**MVP Deliverables (End of Week 6):**
+- ✅ Working API with 4 core endpoints
+- ✅ 5 years of 10-K/10-Q data for 100 tech companies
+- ✅ Python SDK v0.1
+- ✅ Developer documentation
+- ✅ 20 beta users onboarded
+
+---
+
+### Phase 3: Beta Launch (Weeks 7-10) 📈
+
+**Time Commitment:** 40-50 hours/week
+**Original Estimate:** 8 weeks part-time → **Compressed to 4 weeks full-time**
+
+#### Week 7: Expand Beta + Core Iteration (Days 43-49)
+
+**Days 43-45: Data Expansion** (24 hours)
+- Expand to full S&P 500 coverage (500 companies)
+- Add 8-K (event) filings for beta companies
+- Implement incremental daily update pipeline
+
+**Days 46-49: Beta User Feedback** (32 hours)
+- Onboard 30 more beta users (total: 50)
+- Daily check-ins with active users
+- Track usage patterns and pain points
+- Iterate on API based on feedback
+- Fix critical bugs
+
+#### Week 8: Enhanced Features (Days 50-56)
+
+**Days 50-52: Financial Data Endpoint** (24 hours)
+- `/v1/financials` - XBRL tag extraction (NOT full normalization)
+- Return raw XBRL tags with source text
+- Support revenue, gross_margin, r_and_d queries
+
+**Days 53-56: JavaScript SDK + Webhooks** (32 hours)
+- JavaScript/TypeScript SDK v0.1
+- Webhook support for new filing alerts
+- Advanced semantic tagging (risk types, accounting topics)
+
+#### Week 9: Billing + Scale Prep (Days 57-63)
+
+**Days 57-59: Stripe Integration** (24 hours)
+- Integrate Stripe for subscription billing
+- Implement usage metering and overages
+- Create pricing page and checkout flow
+- Test payment flows end-to-end
+
+**Days 60-63: Performance + Reliability** (32 hours)
+- Optimize database queries (add indexes, caching)
+- Set up monitoring (Sentry for errors, Datadog for metrics)
+- Implement automated backups
+- Load testing (simulate 1,000 users)
+
+#### Week 10: Public Launch Prep (Days 64-70)
+
+**Days 64-66: Documentation + Marketing** (24 hours)
+- Comprehensive API documentation
+- Video tutorials (5-minute quick start)
+- Blog post: "Introducing Edgar API"
+- Prepare Show HN, Product Hunt, Reddit posts
+
+**Days 67-70: Launch Execution** (32 hours)
+- Day 67: Hacker News Show HN post (Tuesday morning PT)
+- Day 68: Product Hunt launch (Wednesday)
+- Day 69: Reddit launches (r/algotrading, r/MachineLearning, r/webdev)
+- Day 70: Engage with community, respond to feedback, onboard users
+
+**Beta Deliverables (End of Week 10):**
+- ✅ Full S&P 500 coverage
+- ✅ 6 API endpoints + webhooks
+- ✅ Python + JavaScript SDKs
+- ✅ Stripe billing live
+- ✅ 100+ beta users
+- ✅ Public launch completed
+
+---
+
+### Phase 4: Growth (Weeks 11-16 / Months 3-4) 💰
+
+**Original Estimate:** Months 7-12 → **Accelerated to Months 3-4**
+
+#### Week 11-12: Post-Launch Iteration
+
+**Focus:** Convert free users → paid customers
+- Aggressive user onboarding and support
+- Iterate based on launch feedback
+- Fix bugs and performance issues
+- Add most-requested features
+
+**Target Metrics:**
+- 1,000+ total signups
+- 50-100 paying customers ($249/mo Pro tier)
+- $12-25k MRR
+
+#### Week 13-14: Enhanced Features
+
+**New Features:**
+- `/v1/compare` - cross-filing comparison
+- Temporal analysis (year-over-year change detection)
+- Pre-computed relationship graphs (peer groups)
+
+**Target Metrics:**
+- 1,500+ total signups
+- 100-150 paying customers
+- $25-37k MRR
+
+#### Week 15-16: Enterprise Prep + Optimization
+
+**Enterprise Features:**
+- SSO integration (SAML/OIDC)
+- Audit logging
+- Team management (multi-seat accounts)
+- SLA documentation
+
+**Optimization:**
+- Migrate to Pinecone if ChromaDB struggles at scale
+- Implement request queuing
+- Multi-region deployment (if needed)
+
+**Target Metrics:**
+- 2,000+ total signups
+- 150-200 paying customers
+- $37-50k MRR
+
+**Major Decision Point (End of Week 16 / Month 4):**
+
+| Path | Criteria | Next Step |
+|------|----------|-----------|
+| **Bootstrap** | $25-50k MRR, profitable unit economics | Continue organic growth to $100k MRR |
+| **Seed Raise** | $25k+ MRR, 20%+ MoM growth, strong retention | Raise $1-2M seed, hire 2-3 engineers |
+| **Pivot** | <$15k MRR, weak retention | Reassess pricing, features, or target market |
+
+---
+
+### Phase 5: Scale (Months 5-12) 🚀
+
+#### Months 5-6: Accelerate Growth
+
+**If Bootstrapping:**
+- Goal: $75-100k MRR
+- Focus: Product-led growth, content marketing, SEO
+- Team: Solo or 1 part-time contractor
+
+**If VC-Backed:**
+- Goal: $75-150k MRR
+- Focus: Aggressive customer acquisition, team building
+- Team: 2-3 full-time engineers, 1 growth marketer
+
+#### Months 7-9: Mature Product
+
+**Product Roadmap:**
+- Custom tagging API
+- Disclosure formatting UI (enterprise upsell)
+- International expansion (IFRS filings)
+- Advanced analytics dashboard
+
+**If Bootstrapping:**
+- Goal: $100-150k MRR → $1.2-1.8M ARR (profitable)
+
+**If VC-Backed:**
+- Goal: $150-250k MRR → $1.8-3M ARR (Series A track)
+
+#### Months 10-12: Decision Point
+
+**Bootstrapped Path:**
+- $150k+ MRR → $1.8M+ ARR
+- Profitable, sustainable business
+- Option to hire 1-2 employees
+- Option to raise Series A if desired
+
+**VC-Backed Path:**
+- $250k+ MRR → $3M+ ARR
+- Raise Series A ($5-10M at $30-50M valuation)
+- Scale team to 10-15 people
+- Expand product surface area
+
+---
+
+### Realistic Financial Projections (Full-Time Commitment)
+
+#### Conservative Scenario (Bootstrap Path)
+
+| Month | Signups (Cumulative) | Paying Customers | MRR | Notes |
+|-------|----------------------|------------------|-----|-------|
+| 1-2 | 100 | 0 | $0 | Validation sprint |
+| 3 | 500 | 20 | $5k | MVP beta launch |
+| 4 | 1,000 | 50 | $12k | Public launch |
+| 5 | 1,500 | 100 | $25k | Post-launch growth |
+| 6 | 2,000 | 150 | $37k | Product iteration |
+| 9 | 3,500 | 250 | $62k | **Ramen profitable** |
+| 12 | 5,000 | 400 | $100k | **Real business** → $1.2M ARR |
+
+**Key Assumption:** 10% free → paid conversion, 2-year avg retention
+
+#### Optimistic Scenario (VC-Backed Path)
+
+| Month | Signups (Cumulative) | Paying Customers | MRR | Notes |
+|-------|----------------------|------------------|-----|-------|
+| 1-2 | 100 | 0 | $0 | Validation sprint |
+| 3 | 1,000 | 30 | $7.5k | MVP beta launch (stronger) |
+| 4 | 2,000 | 80 | $20k | Viral launch (HN #1, PH #1) |
+| 5 | 3,500 | 150 | $37k | 25% MoM growth |
+| 6 | 5,000 | 200 | $50k | **Seed fundable** → Raise $1.5M |
+| 9 | 10,000 | 400 | $100k | Post-fundraise acceleration |
+| 12 | 20,000 | 800 | $200k | **Series A track** → $2.4M ARR |
+
+**Key Assumption:** 15% free → paid conversion (better onboarding with funding)
+
+---
+
+### What This Means for You (Full-Time Commitment)
+
+#### Next 2 Weeks (Validation)
+- **Time:** 80-100 hours total
+- **Outcome:** Know if this is a viable business
+- **Cost:** $0 (all free tools)
+- **Risk:** Low (just 2 weeks)
+
+#### Weeks 3-10 (MVP → Launch)
+- **Time:** 320-400 hours total (8 weeks × 40-50 hrs/week)
+- **Outcome:** Live product, 100+ users, first revenue
+- **Cost:** ~$500/month (hosting, tools, domains)
+- **Risk:** Medium (2 months committed, but validated)
+
+#### Months 3-6 (Growth)
+- **Time:** Full-time (520-650 hours total)
+- **Outcome:** $25-50k MRR, decision point on bootstrap vs raise
+- **Cost:** ~$2-5k/month (infrastructure, tools, maybe contractor)
+- **Risk:** Medium-High (burning savings, but revenue coming in)
+
+#### Months 7-12 (Scale)
+- **Bootstrap Path:** $100k MRR → profitable, sustainable, solo or small team
+- **VC Path:** $200k MRR → Series A ready, hire team, scale aggressively
+
+#### Best Case Timeline: Solo → Team
+
+- **Month 4:** $25k MRR → Ramen profitable (if lean)
+- **Month 6:** $50k MRR → Hire first contractor (dev or support)
+- **Month 9:** $100k MRR → Hire first full-time employee
+- **Month 12:** $150-200k MRR → Raise Series A or continue bootstrapping with 2-3 person team
+
+#### Key Advantages of Full-Time Commitment
+
+1. **Speed:** 3.5 months to launch vs 7 months part-time
+2. **Focus:** Deep work on hard problems (table parsing) vs context switching
+3. **Responsiveness:** Daily user feedback loops vs weekly
+4. **Credibility:** VCs strongly prefer full-time founders
+5. **Momentum:** Faster iteration = faster product-market fit
+
+#### De-Risking Strategy
+
+**Checkpoint 1 (End of Week 2):** If validation fails, you've only spent 2 weeks
+**Checkpoint 2 (End of Week 6):** If MVP doesn't work, you've spent 1.5 months
+**Checkpoint 3 (End of Week 10):** If launch flops, you've spent 2.5 months but have working product
+**Checkpoint 4 (Month 6):** If not at $25k MRR, reassess or pivot
+
+**1-year runway means:**
+- You can afford to reach Month 12 even with $0 revenue
+- By Month 6, you'll know if this is working ($25k+ MRR = strong signal)
+- By Month 9, you should be profitable or fundable
+
+---
+
+**Ready to start Week 1? 🚀**
+
+```bash
+# Kick off the validation sprint
+/newplan Investigation: XBRL vs HTML Table Parsing
+
+# Once approved, execute
+/runplan Plans/Investigation_XBRL_vs_HTML_Table_Parsing_2025-12-XX.md
+```
+
+---
+
 ## Changelog
 
 | Date | Author | Changes |
 |------|--------|---------|
 | 12/10/2025 05:23 PM PST | Claude/Wolfgang | Initial document creation |
+| 12/10/2025 05:34 PM PST | Claude/Wolfgang | Addressed Gemini feedback - updated pricing, scope, challenges |
+| 12/10/2025 08:34 PM PST (via pst-timestamp) | Claude/Wolfgang | Added Full-Time Founder Accelerated Timeline section with 2-week validation sprint, 10-week launch timeline, and 4-6 month revenue projections |
 | 12/10/2025 05:34 PM PST | Claude/Wolfgang | Incorporated Gemini feedback: Added "Killer Features" section highlighting temporal diff as key differentiator; Added "Critical Technical Challenges" section addressing HTML table parsing, embedding rot/BYOE, and caching architecture; Updated pricing ($249 Pro, $499 Team) based on price inelasticity insight; Pivoted "Standardized Financials" to "XBRL Tag Extraction"; Narrowed MVP scope to Tech/SaaS vertical slice (100 companies); Added "Immediate Next Steps" with Table Parsing POC as critical validation |
 
 ---
