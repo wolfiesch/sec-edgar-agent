@@ -39,24 +39,24 @@ class TestAnalyzeHistoricalTrends:
 
         statements = [
             FinancialStatement(
+                statement_type="income_statement",
+                period_end=date(2020, 12, 31),
                 fiscal_year=2020,
                 fiscal_period="FY",
-                period_end=date(2020, 12, 31),
-                statement_type="income_statement",
                 data={"revenue": 100_000_000},
             ),
             FinancialStatement(
+                statement_type="income_statement",
+                period_end=date(2021, 12, 31),
                 fiscal_year=2021,
                 fiscal_period="FY",
-                period_end=date(2021, 12, 31),
-                statement_type="income_statement",
                 data={"revenue": 120_000_000},
             ),
             FinancialStatement(
+                statement_type="income_statement",
+                period_end=date(2022, 12, 31),
                 fiscal_year=2022,
                 fiscal_period="FY",
-                period_end=date(2022, 12, 31),
-                statement_type="income_statement",
                 data={"revenue": 150_000_000},
             ),
         ]
@@ -93,17 +93,17 @@ class TestAnalyzeHistoricalTrends:
 
         statements = [
             FinancialStatement(
+                statement_type="balance_sheet",
+                period_end=date(2021, 12, 31),
                 fiscal_year=2021,
                 fiscal_period="FY",
-                period_end=date(2021, 12, 31),
-                statement_type="balance_sheet",
                 data={"total_assets": 500_000_000},
             ),
             FinancialStatement(
+                statement_type="balance_sheet",
+                period_end=date(2022, 12, 31),
                 fiscal_year=2022,
                 fiscal_period="FY",
-                period_end=date(2022, 12, 31),
-                statement_type="balance_sheet",
                 data={"total_assets": 550_000_000},
             ),
         ]
@@ -126,24 +126,24 @@ class TestAnalyzeHistoricalTrends:
 
         statements = [
             FinancialStatement(
+                statement_type="income_statement",
+                period_end=date(2020, 12, 31),
                 fiscal_year=2020,
                 fiscal_period="FY",
-                period_end=date(2020, 12, 31),
-                statement_type="income_statement",
                 data={"net_income": 100_000_000},
             ),
             FinancialStatement(
+                statement_type="income_statement",
+                period_end=date(2021, 12, 31),
                 fiscal_year=2021,
                 fiscal_period="FY",
-                period_end=date(2021, 12, 31),
-                statement_type="income_statement",
                 data={"net_income": 80_000_000},
             ),
             FinancialStatement(
+                statement_type="income_statement",
+                period_end=date(2022, 12, 31),
                 fiscal_year=2022,
                 fiscal_period="FY",
-                period_end=date(2022, 12, 31),
-                statement_type="income_statement",
                 data={"net_income": 60_000_000},
             ),
         ]
@@ -164,10 +164,10 @@ class TestAnalyzeHistoricalTrends:
         # Only one data point
         statements = [
             FinancialStatement(
+                statement_type="income_statement",
+                period_end=date(2022, 12, 31),
                 fiscal_year=2022,
                 fiscal_period="FY",
-                period_end=date(2022, 12, 31),
-                statement_type="income_statement",
                 data={"revenue": 100_000_000},
             ),
         ]
@@ -212,17 +212,17 @@ class TestCompareCompanies:
             if statement_type == "income_statement":
                 data = {
                     "AAPL": [FinancialStatement(
+                        statement_type="income_statement",
+                        period_end=date(2023, 12, 31),
                         fiscal_year=2023,
                         fiscal_period="FY",
-                        period_end=date(2023, 12, 31),
-                        statement_type="income_statement",
                         data={"revenue": 383_000_000_000, "net_income": 97_000_000_000},
                     )],
                     "MSFT": [FinancialStatement(
+                        statement_type="income_statement",
+                        period_end=date(2023, 12, 31),
                         fiscal_year=2023,
                         fiscal_period="FY",
-                        period_end=date(2023, 12, 31),
-                        statement_type="income_statement",
                         data={"revenue": 211_000_000_000, "net_income": 72_000_000_000},
                     )],
                 }
@@ -259,10 +259,10 @@ class TestCompareCompanies:
         )
         mock_client.get_financials.return_value = [
             FinancialStatement(
+                statement_type="income_statement",
+                period_end=date(2023, 12, 31),
                 fiscal_year=2023,
                 fiscal_period="FY",
-                period_end=date(2023, 12, 31),
-                statement_type="income_statement",
                 data={"revenue": 1000, "net_income": 100},
             )
         ]
