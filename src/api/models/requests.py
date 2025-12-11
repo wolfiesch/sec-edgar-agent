@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -8,8 +10,8 @@ class TableParseRequest(BaseModel):
     year: int = Field(..., json_schema_extra={"example": 2024}, ge=2000, le=2030)
     table_name: str = Field(
         ...,
-        json_schema_extra={"example": "segment_information"},
-        description="Target table name/description. For 'segment_information', uses 'segment table' logic."
+        json_schema_extra={"example": "income_statement"},
+        description="Target table: 'balance_sheet', 'income_statement', 'cash_flow', or 'segment_information'."
     )
 
 
@@ -38,4 +40,4 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     answer: str
     citations: list[str]
-    usage: dict[str, int] = {}
+    usage: dict[str, Any] = {}
