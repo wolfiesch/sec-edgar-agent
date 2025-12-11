@@ -1,81 +1,76 @@
-"""Citation generation and formatting utilities."""
+from dataclasses import dataclass
+from typing import Optional
+from edgar import Filing
 
-from datetime import date
+@dataclass
+class Citation:
+    """Source citation for SEC filing data."""
+    ticker: str
+    form_type: str
+    filing_date: str
+    accession_no: Optional[str] = None
+    section: Optional[str] = None
+    page: Optional[int] = None
+    source_url: Optional[str] = None
 
-from src.data.models import Citation
+    def to_string(self) -> str:
+        """
+        Format citation as [TICKER FORM YEAR, Section, Page].
 
+        Examples:
+            [AAPL 10-K 2024, Item 8, Page 45]
+        """
+        year = self.filing_date[:4] if self.filing_date else ""
+        parts = [f"{self.ticker} {self.form_type} {year}"]
 
-def format_citation(citation: Citation) -> str:
-    """
-    Format a citation for display.
+        if self.section:
+            parts.append(self.section)
+        if self.page:
+            parts.append(f"Page {self.page}")
 
-    Examples:
-        [AAPL 10-K 2024]
-        [MSFT 10-K 2024, Risk Factors]
-        [GOOGL 10-K 2024, Item 7, p.45]
-    """
-    return str(citation)
+        return f"[{', '.join(parts)}]"
 
+    def to_dict(self) -> dict:
+        """Convert to dictionary for API response."""
+        return {
+            "citation": self.to_string(),
+            "source_url": self.source_url or self._generate_sec_url(),
+            "ticker": self.ticker,
+            "form_type": self.form_type,
+            "filing_date": self.filing_date,
+            "section": self.section,
+            "page": self.page
+        }
 
-def format_citations(citations: list[Citation]) -> str:
-    """Format multiple citations."""
-    if not citations:
-        return ""
+    def _generate_sec_url(self) -> Optional[str]:
+        """Generate SEC.gov URL for filing."""
+        if not self.accession_no:
+            return None
+        # Format: https://www.sec.gov/cgi-bin/viewer?action=view&accession_number=...
+        # Newer edgar URL might differ, but viewer/archives works.
+        # Classic Viewer URL
+        return f"https://www.sec.gov/cgi-bin/viewer?action=view&accession_number={self.accession_no}"
 
-    unique = {str(c): c for c in citations}
-    return " ".join(format_citation(c) for c in unique.values())
-
-
-def create_citation(
-    ticker: str,
-    form_type: str,
-    filing_date: date,
-    accession_number: str,
-    section: str | None = None,
-    page: int | None = None,
+def create_citation_from_filing(
+    filing: Filing,
+    section: Optional[str] = None,
+    page: Optional[int] = None,
+    ticker: Optional[str] = None
 ) -> Citation:
-    """Create a new citation."""
+    """Helper to create citation from edgar.Filing object."""
+    # Handle case where filing might not have ticker attribute
+    ticker_val = ticker or getattr(filing, "ticker", None)
+    if not ticker_val:
+        # Fallback or error? For now assume it's passed or present.
+        # If filing object really doesn't have it, we need it passed.
+        ticker_val = "UNKNOWN"
+
     return Citation(
-        ticker=ticker.upper(),
-        form_type=form_type,
-        filing_date=filing_date,
-        accession_number=accession_number,
+        ticker=ticker_val,
+        form_type=filing.form,
+        filing_date=str(filing.filing_date),
+        accession_no=filing.accession_no,
         section=section,
         page=page,
+        source_url=filing.url  # edgartools usually provides a URL
     )
-
-
-def citation_to_url(citation: Citation) -> str:
-    """
-    Convert a citation to a SEC EDGAR URL.
-
-    Returns URL to the filing on SEC website.
-    """
-    # Format accession number for URL (remove dashes)
-    acc_num = citation.accession_number.replace("-", "")
-
-    # Extract CIK from accession number if possible, otherwise use ticker
-    # Accession format: NNNNNNNNNN-YY-NNNNNN where first 10 digits are CIK
-    if len(citation.accession_number) >= 10:
-        cik = citation.accession_number[:10].lstrip("0")
-    else:
-        cik = citation.ticker  # Fallback
-
-    return f"https://www.sec.gov/Archives/edgar/data/{cik}/{acc_num}"
-
-
-def merge_citations(
-    *citation_lists: list[Citation],
-) -> list[Citation]:
-    """Merge multiple citation lists, removing duplicates."""
-    seen: set[str] = set()
-    result: list[Citation] = []
-
-    for citations in citation_lists:
-        for citation in citations:
-            key = f"{citation.ticker}:{citation.accession_number}:{citation.section}"
-            if key not in seen:
-                seen.add(key)
-                result.append(citation)
-
-    return result

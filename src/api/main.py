@@ -1,39 +1,47 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from src.api.routes import query, tools, company
+from fastapi.responses import JSONResponse
+
+from .config import settings
+from .routes import health, filings, tables
+from .exceptions import SecApiError
 
 app = FastAPI(
-    title="SEC EDGAR Agent API",
-    description="API for the Autonomous Financial Research Agent",
-    version="0.1.0",
+    title=settings.PROJECT_NAME,
+    description="LLM-ready SEC filing data with structured tables and citations",
+    version=settings.VERSION,
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 
-# Configure CORS
-origins = [
-    "http://localhost:5173",  # Vite dev server
-    "http://localhost:5174",  # Vite dev server (alternate port)
-    "http://localhost:5175",  # Vite dev server (alternate port 2)
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:5174",
-    "http://127.0.0.1:5175",
-    "http://localhost:3000",
-]
+from edgar import set_identity
+set_identity(settings.SEC_USER_AGENT)
 
+# CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
+    allow_origins=settings.CORS_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include routers
-# Note: These modules will be implemented in subsequent steps
-app.include_router(query.router, prefix="/api/query", tags=["Query"])
-app.include_router(tools.router, prefix="/api/tools", tags=["Tools"])
-app.include_router(company.router, prefix="/api/company", tags=["Company"])
+# Exception Handler
+@app.exception_handler(SecApiError)
+async def sec_api_exception_handler(request: Request, exc: SecApiError):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.message},
+    )
 
-@app.get("/health")
-async def health_check():
-    """Health check endpoint."""
-    return {"status": "ok", "service": "sec-edgar-agent"}
+# Include routers
+app.include_router(health.router, tags=["health"])
+app.include_router(filings.router, prefix=f"{settings.API_V1_STR}/filings", tags=["filings"])
+app.include_router(tables.router, prefix=f"{settings.API_V1_STR}/tables", tags=["tables"])
+
+@app.get("/")
+async def root():
+    return {
+        "message": settings.PROJECT_NAME,
+        "docs": "/docs",
+        "version": settings.VERSION
+    }

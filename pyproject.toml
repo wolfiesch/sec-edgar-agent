@@ -31,6 +31,10 @@ dependencies = [
     "lxml>=5.0.0",
     "pandas>=2.2.0",
     "tabulate>=0.9.0",
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "websockets>=12.0",
+    "pydantic-settings>=2.1.0",
 ]
 
 [project.optional-dependencies]
@@ -42,11 +46,7 @@ dev = [
     "mypy>=1.13.0",
 ]
 
-api = [
-    "fastapi>=0.109.0",
-    "uvicorn[standard]>=0.27.0",
-    "websockets>=12.0",
-]
+
 
 [project.scripts]
 edgar-agent = "src.main:app"
@@ -92,4 +92,17 @@ asyncio_mode = "auto"
 addopts = "-v --tb=short"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
+
+[tool.uv.workspace]
+members = [
+    "sdk",
+]
+
+[tool.uv.sources]
+sec-api-llm = { workspace = true, editable = true }
+
+[dependency-groups]
+dev = [
+    "sec-api-llm",
 ]
