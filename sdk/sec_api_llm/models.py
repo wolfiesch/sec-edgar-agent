@@ -38,8 +38,14 @@ class ParsedTable(BaseModel):
         return f"ParsedTable(citation='{self.citation}', section='{self.section}', rows={len(self.structured)})"
 
 class Filing(BaseModel):
-    accession_no: str
-    cik: str
-    company: str
+    """SEC filing metadata."""
+    ticker: str
+    form_type: str
     filing_date: str
-    form: str
+    accession_no: str
+    url: str
+    citation: str
+    sections_available: list[str]
+
+    def __repr__(self) -> str:
+        return f"Filing(ticker='{self.ticker}', form='{self.form_type}', date='{self.filing_date}')"
