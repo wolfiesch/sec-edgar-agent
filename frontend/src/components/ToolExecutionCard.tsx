@@ -67,7 +67,7 @@ export function ToolExecutionCard({ toolName, args, result, success, timestamp }
                 <div>
                     <span className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Output</span>
                     <pre className="mt-1 text-xs bg-black/30 p-2 rounded text-gray-300 overflow-x-auto whitespace-pre-wrap">
-                        {typeof result === 'object' ? JSON.stringify(result, null, 2) : String(result)}
+{typeof displayResult === 'object' ? JSON.stringify(displayResult, null, 2) : String(displayResult)}
                     </pre>
                 </div>
             </div>
