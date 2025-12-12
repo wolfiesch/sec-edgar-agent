@@ -1,10 +1,12 @@
 """SEC EDGAR API client wrapper using edgartools."""
 
 import logging
+import re
 from datetime import date
 from typing import Any
 
 import edgar
+import httpx
 from edgar import Company as EdgarCompany
 from edgar import Filing as EdgarFiling
 
@@ -14,6 +16,9 @@ from src.data.models import Company, Filing, FinancialStatement, InsiderTransact
 from src.utils.rate_limiter import get_rate_limiter
 
 logger = logging.getLogger(__name__)
+
+# SEC EFTS (EDGAR Full-Text Search) API endpoint
+EFTS_SEARCH_URL = "https://efts.sec.gov/LATEST/search-index"
 
 
 class EdgarClient:
@@ -276,14 +281,164 @@ class EdgarClient:
         limit: int = 20,
     ) -> list[Filing]:
         """
-        Search filings by keyword.
+        Search filings by keyword using SEC's EFTS (EDGAR Full-Text Search) API.
 
-        Note: This uses SEC's full-text search API.
+        This searches the full text of all EDGAR filings submitted since 2001,
+        including all attachments (exhibits).
+
+        Args:
+            query: Search query (supports boolean operators: AND, OR, NOT, "exact phrase")
+            form_types: List of form types to filter (e.g., ["10-K", "10-Q"])
+            start_date: Filter filings after this date
+            end_date: Filter filings before this date
+            limit: Maximum number of filings to return (max 100)
+
+        Returns:
+            List of Filing models matching the search criteria
+
+        Examples:
+            >>> client.search_filings("artificial intelligence", form_types=["10-K"])
+            >>> client.search_filings('"risk factors" cybersecurity', start_date=date(2024, 1, 1))
         """
-        # [*TO-DO*] - Implement full-text search using SEC's EFTS API
-        # For now, this is a placeholder
-        logger.warning("Full-text search not yet implemented")
-        return []
+        self.rate_limiter.wait()
+
+        # Build query parameters
+        params: dict[str, str] = {"q": query}
+
+        # Date range
+        if start_date or end_date:
+            params["dateRange"] = "custom"
+            if start_date:
+                params["startdt"] = start_date.isoformat()
+            if end_date:
+                params["enddt"] = end_date.isoformat()
+
+        # Form types - EFTS accepts comma-separated list
+        if form_types:
+            params["forms"] = ",".join(form_types)
+
+        try:
+            logger.debug(f"EFTS search: query={query}, forms={form_types}, date_range={start_date}-{end_date}")
+
+            with httpx.Client(timeout=30.0) as client:
+                response = client.get(
+                    EFTS_SEARCH_URL,
+                    params=params,
+                    headers={"User-Agent": settings.sec_user_agent},
+                )
+                response.raise_for_status()
+                data = response.json()
+
+            hits = data.get("hits", {}).get("hits", [])
+            total = data.get("hits", {}).get("total", {}).get("value", 0)
+            logger.info(f"EFTS search found {total} results for query: {query}")
+
+            # Convert EFTS results to Filing models
+            filings: list[Filing] = []
+            seen_accessions: set[str] = set()  # Deduplicate by accession number
+
+            for hit in hits[:limit * 2]:  # Fetch extra to account for duplicates
+                if len(filings) >= limit:
+                    break
+
+                source = hit.get("_source", {})
+
+                # Get accession number (EFTS uses 'adsh' without dashes)
+                adsh = source.get("adsh", "")
+                if not adsh or adsh in seen_accessions:
+                    continue
+                seen_accessions.add(adsh)
+
+                # Convert adsh format (000032019324000123) to standard format (0000320193-24-000123)
+                accession_number = self._format_accession_number(adsh)
+
+                # Extract company info from display_names
+                display_names = source.get("display_names", [])
+                ticker = ""
+                company_name = ""
+                cik = ""
+
+                if display_names:
+                    # Format: "Apple Inc.  (AAPL)  (CIK 0000320193)"
+                    match = re.search(r"(.+?)\s+\(([A-Z]+)\)\s+\(CIK\s+(\d+)\)", display_names[0])
+                    if match:
+                        company_name = match.group(1).strip()
+                        ticker = match.group(2)
+                        cik = match.group(3)
+                    else:
+                        company_name = display_names[0]
+
+                # Get CIK from ciks array if not found in display_names
+                if not cik and source.get("ciks"):
+                    cik = source["ciks"][0].lstrip("0") or "0"
+
+                # Parse filing date
+                file_date_str = source.get("file_date", "")
+                try:
+                    filing_date = date.fromisoformat(file_date_str) if file_date_str else date.today()
+                except ValueError:
+                    filing_date = date.today()
+
+                # Parse period end date
+                period_ending_str = source.get("period_ending", "")
+                try:
+                    report_date = date.fromisoformat(period_ending_str) if period_ending_str else None
+                except ValueError:
+                    report_date = None
+
+                # Get form type (prefer root_forms for main form, file_type might be exhibit)
+                form_type = source.get("form", "")
+                root_forms = source.get("root_forms", [])
+                if root_forms and not form_type:
+                    form_type = root_forms[0]
+
+                # Get SIC code
+                sics = source.get("sics", [])
+                sic = sics[0] if sics else None
+
+                # Create Company model
+                company = Company(
+                    cik=cik or "0",
+                    ticker=ticker or "UNKNOWN",
+                    name=company_name or "Unknown Company",
+                    sic=sic,
+                    sic_description=None,  # Not provided by EFTS
+                    exchange=None,  # Not provided by EFTS
+                )
+
+                # Generate SEC URL
+                url = f"https://www.sec.gov/Archives/edgar/data/{cik.lstrip('0')}/{adsh}/"
+
+                filing = Filing(
+                    accession_number=accession_number,
+                    form_type=form_type,
+                    filing_date=filing_date,
+                    report_date=report_date,
+                    company=company,
+                    primary_document=source.get("file_description"),
+                    url=url,
+                )
+                filings.append(filing)
+
+            return filings
+
+        except httpx.HTTPError as e:
+            logger.error(f"EFTS search HTTP error: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"EFTS search failed: {e}")
+            return []
+
+    def _format_accession_number(self, adsh: str) -> str:
+        """
+        Convert EFTS adsh format to standard accession number format.
+
+        EFTS format: 000032019324000123 (18 digits, no dashes)
+        Standard format: 0000320193-24-000123 (10-2-6 with dashes)
+        """
+        if len(adsh) != 18:
+            return adsh
+        return f"{adsh[:10]}-{adsh[10:12]}-{adsh[12:]}"
 
 
 # Global client instance
