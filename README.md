@@ -1,92 +1,127 @@
-# SEC EDGAR Financial Agent
+# SEC EDGAR Agent for LLMs
 
-An autonomous AI agent for financial research using SEC EDGAR filings.
+An AI-native platform for financial research, providing LLM-ready SEC filing data with structured tables, semantic search, and RAG capabilities.
 
-## Features
+## 🚀 Features
 
-- **Direct SEC Access**: Free access to SEC EDGAR APIs with no commercial dependencies
-- **Citation-Backed**: Every response includes citations to source filings
-- **Rich CLI**: Beautiful terminal interface with tables and formatting
-- **Tool-Based Architecture**: Extensible tool registry for AI agent integration
+- **Semantic Search**: Search across SEC listings using natural language (powered by OpenAI embeddings and ChromaDB).
+- **RAG Chat**: Ask questions about financial filings and get answers with **citations** (e.g., `[AAPL 10-K, Item 8]`).
+- **Structured Tables**: 100% accurate table extraction converted to LLM-friendly Markdown, preserving logical structure.
+- **Robust Ingestion**: Asynchronous pipeline to index filings with state tracking and idempotency.
+- **Python SDK**: Developer-friendly client (`sec-api-llm`) for easy integration.
 
-## Quick Start
+## 🛠️ Architecture
 
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/sec-edgar-agent.git
-cd sec-edgar-agent
+The system is built as a modular microservices-ready application:
 
-# Install dependencies with uv
-uv sync
+- **API**: FastAPI service handling requests.
+- **Vector Store**: ChromaDB for embedding and retrieving filing chunks.
+- **Database**: SQLite (SQLModel) for tracking ingestion job state.
+- **Parser**: Specialized logic for extracting tables and content from EDGAR HTML.
+- **SDK**: A typed Python client for interacting with the API.
 
-# Copy environment file and add your API key
-cp .env.example .env
-# Edit .env with your OPENAI_API_KEY
+## 🏁 Quick Start
 
-# Run the agent
-uv run edgar-agent
-```
+### Using Docker (Recommended)
 
-## Usage
+1.  **Set Environment Variables**:
+    Create a `.env` file (or set variables directly):
 
-### Interactive Mode
+    ```bash
+    OPENAI_API_KEY=sk-...    # Required for Search/Chat
+    SEC_USER_AGENT="Name email@example.com"
+    API_KEY=sec-api-demo    # For ingestion endpoints
+    ```
 
-```bash
-uv run edgar-agent
-```
+2.  **Run with Docker Compose**:
+    ```bash
+    docker-compose up --build
+    ```
+    The API will be available at `http://localhost:8000`.
 
-Available commands:
-- `/company AAPL` - Get company info
-- `/filings AAPL` - List recent filings
-- `/financials AAPL` - Get financial data
-- `/insider AAPL` - Get insider trading activity
-- `/help` - Show all commands
+### Local Development
 
-### CLI Commands
+1.  **Install `uv`**:
 
-```bash
-# Get company info
-uv run edgar-agent company AAPL
+    ```bash
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    ```
 
-# List filings
-uv run edgar-agent filings AAPL --form 10-K --limit 5
+2.  **Install Dependencies**:
 
-# Get financials
-uv run edgar-agent financials AAPL --periods 3
-```
+    ```bash
+    uv sync
+    ```
 
-## Architecture
+3.  **Run the Server**:
+    ```bash
+    export OPENAI_API_KEY=sk-...
+    uv run uvicorn src.api.main:app --reload
+    ```
 
-```
-User Query → Tool Registry → SEC EDGAR API → Response with Citations
-```
+## 📦 Python SDK
 
-### Key Components
+This project includes a Python SDK for easy interaction.
 
-- **Tool Registry** (`src/tools/registry.py`): Registers tools for Claude's tool_use API
-- **Edgar Client** (`src/data/edgar_client.py`): Wraps edgartools with rate limiting
-- **Tools** (`src/tools/`): Search, fetch, and financial data extraction
-
-## SEC EDGAR Notes
-
-- **Rate Limit**: SEC requires max 10 requests/second
-- **User Agent**: SEC requires identification via User-Agent header
-- **Free API**: No authentication required for `data.sec.gov`
-
-## Development
+### Installation
 
 ```bash
-# Run tests
+cd sdk
+pip install -e .
+```
+
+### Usage Example
+
+```python
+from sec_api_llm import SecClient
+
+client = SecClient(base_url="http://localhost:8000/api/v1")
+
+# 1. Trigger Ingestion (Async)
+job = client.ingest.trigger(ticker="AAPL", form_type="10-K", year=2024)
+print(f"Job started: {job['job_id']}")
+
+# ... wait for job completion ...
+
+# 2. Semantic Search
+results = client.search.query("What are the risk factors?")
+for res in results.results:
+    print(res.content)
+
+# 3. Chat with Citations
+response = client.chat.create(
+    messages=[{"role": "user", "content": "What was the net income?"}],
+    ticker="AAPL"
+)
+print(response.answer)
+# Output: "The net income was $97B [AAPL 10-K, Item 8]."
+```
+
+## 📚 API Reference
+
+| Method | Endpoint               | Description                            |
+| ------ | ---------------------- | -------------------------------------- |
+| `POST` | `/api/v1/search`       | Semantic search over indexed filings   |
+| `POST` | `/api/v1/chat`         | RAG chat with context and citations    |
+| `POST` | `/api/v1/ingest`       | Trigger background ingestion job       |
+| `GET`  | `/api/v1/ingest/{id}`  | Get ingestion job status               |
+| `POST` | `/api/v1/tables/parse` | Extract structured tables from filings |
+| `GET`  | `/api/v1/filings/...`  | Get filing metadata                    |
+
+## 🧪 Testing
+
+Run unit tests:
+
+```bash
 uv run pytest
-
-# Type checking
-uv run mypy src/
-
-# Linting
-uv run ruff check src/
-uv run ruff format src/
 ```
 
-## License
+Run the end-to-end demo script:
+
+```bash
+uv run python scripts/demo_tier1.py
+```
+
+## 📄 License
 
 MIT
