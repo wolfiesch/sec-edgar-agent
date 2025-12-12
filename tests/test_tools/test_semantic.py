@@ -230,7 +230,7 @@ class TestIndexFiling:
         mock_client.get_filings.return_value = [filing]
 
         mock_edgar_filing = MagicMock()
-        mock_tenk = MagicMock()
+        MagicMock()
         # Make obj() raise an error
         mock_edgar_filing.obj.side_effect = Exception("Parse error")
         mock_client.get_filing_by_accession.return_value = mock_edgar_filing

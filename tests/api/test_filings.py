@@ -1,6 +1,8 @@
+from unittest.mock import MagicMock, patch
+
 from fastapi.testclient import TestClient
+
 from src.api.main import app
-from unittest.mock import patch, MagicMock
 
 client = TestClient(app)
 
@@ -19,7 +21,7 @@ def test_get_filing_mocked():
         mock_company.get_filings.return_value = [mock_filing]
 
         response = client.get("/api/v1/filings/AAPL/10-K?year=2024")
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["ticker"] == "AAPL"

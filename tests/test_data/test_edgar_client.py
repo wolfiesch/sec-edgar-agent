@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 from src.data.edgar_client import EdgarClient, get_edgar_client
-from src.data.models import Company, Filing, FinancialStatement, InsiderTransaction
 
 
 @pytest.fixture(autouse=True)
@@ -18,8 +17,8 @@ def clear_cache_and_singleton():
     cache.clear()
 
     # Reset global singletons
-    import src.data.edgar_client
     import src.data.cache
+    import src.data.edgar_client
     import src.utils.rate_limiter
 
     src.data.edgar_client._client = None

@@ -1,7 +1,7 @@
 """Tests for watchlist management tools."""
 
 import json
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 

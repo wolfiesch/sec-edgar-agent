@@ -3,8 +3,6 @@
 import json
 from unittest.mock import MagicMock, Mock, patch
 
-import pytest
-
 from src.agents.base import AgentContext, Plan, Task, TaskStatus
 from src.agents.orchestrator import Orchestrator
 
@@ -220,17 +218,17 @@ class TestOrchestratorIntegration:
     def test_max_steps_limit(self, mock_call_llm: MagicMock) -> None:
         """Test that orchestrator respects max_steps limit."""
         # Create a plan with many tasks
-        plan_json = """{
+        plan_json = """{{
             "reasoning": "Complex analysis",
             "is_simple": false,
-            "tasks": [%s]
-        }""" % ",".join(
+            "tasks": [{}]
+        }}""".format(",".join(
             [
                 f'{{"id": "task_{i}", "description": "Task {i}", '
                 f'"tool_hint": "get_company_info", "dependencies": []}}'
                 for i in range(25)  # More than max_steps
             ]
-        )
+        ))
 
         mock_call_llm.side_effect = [
             {"content": plan_json, "tool_calls": None, "finish_reason": "stop", "usage": {"input_tokens": 100, "output_tokens": 50}},  # Planner
@@ -255,7 +253,7 @@ class TestOrchestratorIntegration:
                 execution_time_ms=100,
             )
 
-            result = orchestrator.run("Complex query")
+            orchestrator.run("Complex query")
 
             # Should stop at max_steps, not execute all 25 tasks
             assert mock_execute.call_count <= orchestrator.max_steps
@@ -395,7 +393,7 @@ class TestOrchestratorErrorHandling:
 
     def test_validation_max_retries(self) -> None:
         """Test that orchestrator stops after max retries."""
-        from src.agents.base import AgentResponse, Task, TaskStatus
+        from src.agents.base import AgentResponse
 
         orchestrator = Orchestrator()
 
@@ -445,7 +443,7 @@ class TestOrchestratorErrorHandling:
         # Patch the validator to always fail
         with (
             patch.object(orchestrator.validator, "run", side_effect=mock_validator_run),
-            patch.object(orchestrator.planner, "run", side_effect=mock_planner_run) as mock_planner,
+            patch.object(orchestrator.planner, "run", side_effect=mock_planner_run),
             patch.object(orchestrator.executor, "run") as mock_executor,
             patch.object(orchestrator.synthesizer, "run") as mock_synthesizer,
         ):

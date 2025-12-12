@@ -78,6 +78,9 @@ select = [
 ]
 ignore = [
     "E501",   # line too long (handled by formatter)
+    "B008",   # do not perform function call in argument defaults (FastAPI)
+    "B904",   # raise ... from err
+    "E722",   # do not use bare 'except'
 ]
 
 [tool.ruff.lint.isort]

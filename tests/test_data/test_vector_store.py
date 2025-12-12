@@ -3,8 +3,6 @@
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
-import pytest
-
 from src.data.vector_store import FilingVectorStore, get_vector_store
 
 

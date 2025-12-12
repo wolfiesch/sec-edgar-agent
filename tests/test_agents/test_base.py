@@ -1,6 +1,5 @@
 """Tests for agent base classes and models."""
 
-import pytest
 
 from src.agents.base import (
     AgentContext,
