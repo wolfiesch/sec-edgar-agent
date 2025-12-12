@@ -1,24 +1,13 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Security
-from fastapi.security.api_key import APIKeyHeader
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlmodel import Session
 
+from src.api.middleware import verify_api_key
 from src.api.models.requests import IngestRequest
-from src.config import settings
 from src.data.db import get_session
 from src.data.db_models import JobStatus, ProcessingJob
 from src.data.ingestion import ingest_filing
 
 router = APIRouter()
-
-api_key_header = APIKeyHeader(name="X-API-Key", auto_error=True)
-
-
-async def get_api_key(api_key_header: str = Security(api_key_header)):
-    if api_key_header != settings.api_key:
-        raise HTTPException(
-            status_code=403, detail="Could not validate credentials"
-        )
-    return api_key_header
 
 
 @router.post("/", status_code=202)
@@ -26,7 +15,7 @@ async def trigger_ingestion(
     request: IngestRequest,
     background_tasks: BackgroundTasks,
     session: Session = Depends(get_session),
-    api_key: str = Depends(get_api_key),
+    _api_key: str = Depends(verify_api_key),
 ):
     """
     Start robust background ingestion.
@@ -53,7 +42,7 @@ async def trigger_ingestion(
 async def get_ingestion_status(
     job_id: int,
     session: Session = Depends(get_session),
-    api_key: str = Depends(get_api_key),
+    _api_key: str = Depends(verify_api_key),
 ):
     job = session.get(ProcessingJob, job_id)
     if not job:

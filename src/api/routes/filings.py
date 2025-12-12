@@ -2,7 +2,7 @@
 from edgar import Company
 from fastapi import APIRouter, Query
 
-from ...utils.citations import create_citation_from_filing
+from ...utils.citations import citation_to_url, create_citation_from_filing, format_citation
 from ..exceptions import FilingNotFound, SecApiError
 from ..models.responses import FilingResponse
 
@@ -44,7 +44,7 @@ async def get_filing(
 
         # Build response
         # Using URL from filing object or generated one
-        url = selected_filing.url if hasattr(selected_filing, 'url') else citation.source_url
+        url = selected_filing.url if hasattr(selected_filing, 'url') else citation_to_url(citation)
 
         return FilingResponse(
             ticker=ticker,
@@ -52,10 +52,10 @@ async def get_filing(
             filing_date=str(selected_filing.filing_date),
             accession_no=selected_filing.accession_no,
             url=url or "",
-            citation=citation.to_string(),
+            citation=format_citation(citation),
             sections_available=[
                 "Item 1", "Item 1A", "Item 7", "Item 7A", "Item 8", "Item 9", "Item 9A"
-            ] # Static list for demo, or extract if possible
+            ]  # Static list for demo, or extract if possible
         )
 
     except FilingNotFound:

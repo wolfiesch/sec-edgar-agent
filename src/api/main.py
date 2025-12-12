@@ -7,6 +7,7 @@ from src.data.db import init_db
 
 from .config import settings
 from .exceptions import SecApiError
+from .middleware import RateLimitMiddleware, RequestLoggingMiddleware
 from .routes import chat, filings, health, ingest, search, tables
 
 # Configure edgartools identity immediately
@@ -31,6 +32,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Rate limiting middleware
+app.add_middleware(
+    RateLimitMiddleware,
+    requests_per_minute=settings.RATE_LIMIT_REQUESTS_PER_MINUTE,
+    requests_per_hour=settings.RATE_LIMIT_REQUESTS_PER_HOUR,
+)
+
+# Request logging middleware
+app.add_middleware(RequestLoggingMiddleware)
 
 # Exception Handler
 @app.exception_handler(SecApiError)

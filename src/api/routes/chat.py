@@ -2,6 +2,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from openai import AsyncOpenAI
 
+from src.api.middleware import verify_api_key
 from src.api.models.requests import ChatRequest, ChatResponse
 from src.config import settings
 from src.data.vector_store import FilingVectorStore, get_vector_store
@@ -21,6 +22,7 @@ def format_source(doc) -> str:
 async def chat(
     request: ChatRequest,
     vector_store: FilingVectorStore = Depends(get_vector_store),
+    _api_key: str = Depends(verify_api_key),
 ):
     """
     Chat with SEC filings.

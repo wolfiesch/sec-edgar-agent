@@ -1,4 +1,4 @@
-
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,5 +18,21 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     SEC_USER_AGENT: str = "SECEdgarAgent/0.1.0 (unknown@example.com)"
+
+    # Rate limiting
+    RATE_LIMIT_REQUESTS_PER_MINUTE: int = Field(
+        default=60,
+        description="Maximum requests per minute per IP"
+    )
+    RATE_LIMIT_REQUESTS_PER_HOUR: int = Field(
+        default=1000,
+        description="Maximum requests per hour per IP"
+    )
+
+    # API Key (loaded from global settings, but can be overridden)
+    API_KEY: str = Field(
+        default="sec-api-demo",
+        description="API key for protected endpoints"
+    )
 
 settings = Settings()
