@@ -19,7 +19,7 @@ class FilingsResource:
     ) -> Filing:
         """
         Get metadata for a specific filing.
-        
+
         Args:
             ticker: Stock ticker
             form: Form type (e.g., "10-K")

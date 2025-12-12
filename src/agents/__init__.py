@@ -10,7 +10,11 @@ from src.agents.base import (
     TaskStatus,
 )
 from src.agents.executor import ExecutorAgent
-from src.agents.orchestrator import Orchestrator, StreamingOrchestrator, get_orchestrator
+from src.agents.orchestrator import (
+    Orchestrator,
+    StreamingOrchestrator,
+    get_orchestrator,
+)
 from src.agents.planner import PlannerAgent
 from src.agents.synthesizer import SynthesizerAgent
 from src.agents.validator import ValidatorAgent

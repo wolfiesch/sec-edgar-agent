@@ -34,7 +34,7 @@ class FilingVectorStore:
 
         # Initialize Embedding Function
         from chromadb.utils import embedding_functions
-        
+
         # Use OpenAI if key is present, otherwise default (good for local dev/demo without costs)
         if settings.openai_api_key:
             self.embedding_fn = embedding_functions.OpenAIEmbeddingFunction(

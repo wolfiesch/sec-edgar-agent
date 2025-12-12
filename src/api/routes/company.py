@@ -1,4 +1,3 @@
-from typing import List, Optional
 import logging
 
 from fastapi import APIRouter, HTTPException
@@ -14,16 +13,16 @@ class CompanyInfo(BaseModel):
     ticker: str
     cik: str
     name: str
-    sic: Optional[str] = None
-    sic_description: Optional[str] = None
+    sic: str | None = None
+    sic_description: str | None = None
 
 
 class FilingSummary(BaseModel):
     accession_number: str
     form_type: str
     filing_date: str
-    primary_document: Optional[str] = None
-    url: Optional[str] = None
+    primary_document: str | None = None
+    url: str | None = None
 
 
 @router.get("/{ticker}", response_model=CompanyInfo)
@@ -45,8 +44,8 @@ async def get_company_info(ticker: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{ticker}/filings", response_model=List[FilingSummary])
-async def get_company_filings(ticker: str, form_type: Optional[str] = "10-K", limit: int = 10):
+@router.get("/{ticker}/filings", response_model=list[FilingSummary])
+async def get_company_filings(ticker: str, form_type: str | None = "10-K", limit: int = 10):
     """Get recent filings for a company."""
     try:
         client = get_edgar_client()

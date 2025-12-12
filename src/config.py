@@ -66,6 +66,9 @@ class Settings(BaseSettings):
         description="Logging level",
     )
 
+    # API
+    API_V1_STR: str = "/api/v1"
+
     # Agent settings
     max_agent_steps: int = Field(
         default=20,

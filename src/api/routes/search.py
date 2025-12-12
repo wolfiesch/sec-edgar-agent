@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException, Depends
-from src.data.vector_store import get_vector_store, FilingVectorStore
+from fastapi import APIRouter, Depends, HTTPException
+
 from src.api.models.requests import SearchRequest
 from src.api.models.responses import SearchResponse, SearchResult
+from src.data.vector_store import FilingVectorStore, get_vector_store
 
 router = APIRouter()
 

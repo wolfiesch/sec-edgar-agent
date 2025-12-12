@@ -1,6 +1,11 @@
-from typing import Any, Dict
 from fastapi import APIRouter, HTTPException
-from src.api.models import ToolListResponse, ToolDefinition, ToolExecutionRequest, ToolExecutionResponse
+
+from src.api.models import (
+    ToolDefinition,
+    ToolExecutionRequest,
+    ToolExecutionResponse,
+    ToolListResponse,
+)
 from src.tools.registry import registry
 
 router = APIRouter()
@@ -27,7 +32,7 @@ async def execute_tool(tool_name: str, request: ToolExecutionRequest):
         raise HTTPException(status_code=404, detail=f"Tool '{tool_name}' not found")
 
     result = registry.execute(tool_name, request.arguments)
-    
+
     return ToolExecutionResponse(
         success=result.success,
         result=result.result,

@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException
+
 from ...parsers.table_parser import TableParser
 from ..models.requests import TableParseRequest
 from ..models.responses import ParsedTableResponse
-from ..exceptions import SecApiError, ParsingError
 
 router = APIRouter()
 parser = TableParser()  # Singleton for demo specific context maps

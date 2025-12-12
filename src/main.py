@@ -2,8 +2,6 @@
 
 import json
 import logging
-import sys
-from typing import Any
 
 import typer
 from rich.console import Console
@@ -187,7 +185,6 @@ def handle_command(command: str) -> bool:
 def run_chat_loop() -> None:
     """Run the interactive chat loop."""
     # Import here to register tools and agents
-    from src.tools import registry
     from src.agents import StreamingOrchestrator
     from src.config import settings
 

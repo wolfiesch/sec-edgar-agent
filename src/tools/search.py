@@ -4,7 +4,7 @@ from datetime import date
 from typing import Any
 
 from src.data.edgar_client import get_edgar_client
-from src.data.models import Citation, Company, Filing
+from src.data.models import Citation
 from src.tools.registry import registry
 
 

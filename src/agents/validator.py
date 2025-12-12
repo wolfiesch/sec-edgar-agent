@@ -8,7 +8,6 @@ from src.agents.base import (
     AgentResponse,
     AgentRole,
     BaseAgent,
-    TaskStatus,
 )
 
 logger = logging.getLogger(__name__)

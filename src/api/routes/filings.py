@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Query
-from typing import Optional
+
 from edgar import Company
-from ..models.responses import FilingResponse
+from fastapi import APIRouter, Query
+
 from ...utils.citations import create_citation_from_filing
 from ..exceptions import FilingNotFound, SecApiError
+from ..models.responses import FilingResponse
 
 router = APIRouter()
 
@@ -11,7 +12,7 @@ router = APIRouter()
 async def get_filing(
     ticker: str,
     form_type: str,
-    year: Optional[int] = Query(None, description="Filing year (default: latest)")
+    year: int | None = Query(None, description="Filing year (default: latest)")
 ):
     """
     Retrieve metadata for a specific SEC filing.
@@ -63,7 +64,7 @@ async def get_filing(
         raise SecApiError(f"Failed to fetch filing: {str(e)}")
 
 @router.get("/{ticker}/{form_type}/sections")
-async def list_sections(ticker: str, form_type: str, year: Optional[int] = None):
+async def list_sections(ticker: str, form_type: str, year: int | None = None):
     """List available sections in a filing (for discovery)."""
     # For demo, returning static common sections for 10-K
     return {
