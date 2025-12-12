@@ -16,7 +16,10 @@ export function useWebSocket(queryId: string | null) {
     setEvents([]);
     setStatus('connecting');
 
-    const wsUrl = `ws://localhost:8000/api/query/${queryId}/stream`;
+    // Use dynamic host for WebSocket connection
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    const wsUrl = `${protocol}//${host}/api/query/${queryId}/stream`;
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
