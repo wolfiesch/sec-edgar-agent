@@ -2,8 +2,6 @@
 
 from datetime import date
 
-import pytest
-
 from src.data.models import Citation
 from src.utils.citations import (
     citation_to_url,

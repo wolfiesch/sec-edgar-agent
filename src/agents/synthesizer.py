@@ -183,7 +183,7 @@ class SynthesizerAgent(BaseAgent):
         if isinstance(value, list):
             return f"[{len(value)} items]"
         if isinstance(value, dict):
-            return f"{{...}}"
+            return "{...}"
         return str(value)[:100]
 
     def _fallback_response(self, context: AgentContext) -> str:
@@ -204,7 +204,7 @@ class SynthesizerAgent(BaseAgent):
                 elif "filings" in data:
                     lines.append(f"- Found {len(data.get('filings', []))} filings")
                 else:
-                    lines.append(f"- Data retrieved successfully")
+                    lines.append("- Data retrieved successfully")
             lines.append("")
 
         if context.citations:
