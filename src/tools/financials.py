@@ -12,20 +12,30 @@ logger = logging.getLogger(__name__)
 
 @registry.register(
     name="get_income_statement",
-    description="Get income statement data (revenue, net income, EPS, etc.) from SEC filings",
+    description="Get income statement data (revenue, net income, EPS, etc.) from SEC filings. Supports historical years and quarterly data.",
     parameters={
         "type": "object",
         "properties": {
             "ticker": {
                 "type": "string",
-                "description": "Stock ticker symbol",
+                "description": "Stock ticker symbol (e.g., 'AAPL', 'GOOG', 'MSFT')",
             },
             "periods": {
                 "type": "integer",
-                "description": "Number of annual periods to retrieve",
+                "description": "Number of periods to retrieve (used if fiscal_year not specified)",
                 "default": 3,
                 "minimum": 1,
                 "maximum": 10,
+            },
+            "fiscal_year": {
+                "type": "integer",
+                "description": "Specific fiscal year to retrieve (e.g., 2011, 2020). If not specified, returns most recent periods.",
+            },
+            "quarter": {
+                "type": "integer",
+                "description": "Set to any value (1, 2, or 3) to fetch 10-Q quarterly data instead of 10-K annual data. Returns quarterly periods - check fiscal_period in response.",
+                "minimum": 1,
+                "maximum": 3,
             },
         },
         "required": ["ticker"],
@@ -34,6 +44,8 @@ logger = logging.getLogger(__name__)
 def get_income_statement(
     ticker: str,
     periods: int = 3,
+    fiscal_year: int | None = None,
+    quarter: int | None = None,
 ) -> dict[str, Any]:
     """Get income statement data."""
     client = get_edgar_client()
@@ -43,19 +55,23 @@ def get_income_statement(
             ticker=ticker,
             statement_type="income_statement",
             periods=periods,
+            fiscal_year=fiscal_year,
+            quarter=quarter,
         )
 
         if not statements:
+            period_desc = f"Q{quarter} " if quarter else ""
+            year_desc = f"for {fiscal_year}" if fiscal_year else ""
             return {
                 "success": False,
-                "error": f"No income statement data found for {ticker}",
+                "error": f"No income statement data found for {ticker} {period_desc}{year_desc}".strip(),
             }
 
-        # Build citations
+        # Build citations - use 10-Q for quarterly, 10-K for annual
         citations = [
             Citation(
                 ticker=ticker.upper(),
-                form_type="10-K",
+                form_type="10-Q" if s.fiscal_period.startswith("Q") else "10-K",
                 filing_date=s.period_end,
                 section="Financial Statements",
                 accession_number="",  # Would need to track this
@@ -70,6 +86,7 @@ def get_income_statement(
             "statements": [
                 {
                     "fiscal_year": s.fiscal_year,
+                    "fiscal_period": s.fiscal_period,
                     "period_end": s.period_end.isoformat(),
                     "currency": s.currency,
                     "data": s.data,
@@ -89,18 +106,28 @@ def get_income_statement(
 
 @registry.register(
     name="get_balance_sheet",
-    description="Get balance sheet data (assets, liabilities, equity) from SEC filings",
+    description="Get balance sheet data (assets, liabilities, equity) from SEC filings. Supports historical years and quarterly data.",
     parameters={
         "type": "object",
         "properties": {
             "ticker": {
                 "type": "string",
-                "description": "Stock ticker symbol",
+                "description": "Stock ticker symbol (e.g., 'AAPL', 'GOOG', 'MSFT')",
             },
             "periods": {
                 "type": "integer",
-                "description": "Number of annual periods to retrieve",
+                "description": "Number of periods to retrieve (used if fiscal_year not specified)",
                 "default": 3,
+            },
+            "fiscal_year": {
+                "type": "integer",
+                "description": "Specific fiscal year to retrieve (e.g., 2011, 2020). If not specified, returns most recent periods.",
+            },
+            "quarter": {
+                "type": "integer",
+                "description": "Set to any value (1, 2, or 3) to fetch 10-Q quarterly data instead of 10-K annual data. Returns quarterly periods - check fiscal_period in response.",
+                "minimum": 1,
+                "maximum": 3,
             },
         },
         "required": ["ticker"],
@@ -109,6 +136,8 @@ def get_income_statement(
 def get_balance_sheet(
     ticker: str,
     periods: int = 3,
+    fiscal_year: int | None = None,
+    quarter: int | None = None,
 ) -> dict[str, Any]:
     """Get balance sheet data."""
     client = get_edgar_client()
@@ -118,12 +147,16 @@ def get_balance_sheet(
             ticker=ticker,
             statement_type="balance_sheet",
             periods=periods,
+            fiscal_year=fiscal_year,
+            quarter=quarter,
         )
 
         if not statements:
+            period_desc = f"Q{quarter} " if quarter else ""
+            year_desc = f"for {fiscal_year}" if fiscal_year else ""
             return {
                 "success": False,
-                "error": f"No balance sheet data found for {ticker}",
+                "error": f"No balance sheet data found for {ticker} {period_desc}{year_desc}".strip(),
             }
 
         return {
@@ -133,6 +166,7 @@ def get_balance_sheet(
             "statements": [
                 {
                     "fiscal_year": s.fiscal_year,
+                    "fiscal_period": s.fiscal_period,
                     "period_end": s.period_end.isoformat(),
                     "currency": s.currency,
                     "data": s.data,
@@ -151,18 +185,28 @@ def get_balance_sheet(
 
 @registry.register(
     name="get_cash_flow",
-    description="Get cash flow statement data from SEC filings",
+    description="Get cash flow statement data from SEC filings. Supports historical years and quarterly data.",
     parameters={
         "type": "object",
         "properties": {
             "ticker": {
                 "type": "string",
-                "description": "Stock ticker symbol",
+                "description": "Stock ticker symbol (e.g., 'AAPL', 'GOOG', 'MSFT')",
             },
             "periods": {
                 "type": "integer",
-                "description": "Number of annual periods to retrieve",
+                "description": "Number of periods to retrieve (used if fiscal_year not specified)",
                 "default": 3,
+            },
+            "fiscal_year": {
+                "type": "integer",
+                "description": "Specific fiscal year to retrieve (e.g., 2011, 2020). If not specified, returns most recent periods.",
+            },
+            "quarter": {
+                "type": "integer",
+                "description": "Set to any value (1, 2, or 3) to fetch 10-Q quarterly data instead of 10-K annual data. Returns quarterly periods - check fiscal_period in response.",
+                "minimum": 1,
+                "maximum": 3,
             },
         },
         "required": ["ticker"],
@@ -171,6 +215,8 @@ def get_balance_sheet(
 def get_cash_flow(
     ticker: str,
     periods: int = 3,
+    fiscal_year: int | None = None,
+    quarter: int | None = None,
 ) -> dict[str, Any]:
     """Get cash flow statement data."""
     client = get_edgar_client()
@@ -180,12 +226,16 @@ def get_cash_flow(
             ticker=ticker,
             statement_type="cash_flow",
             periods=periods,
+            fiscal_year=fiscal_year,
+            quarter=quarter,
         )
 
         if not statements:
+            period_desc = f"Q{quarter} " if quarter else ""
+            year_desc = f"for {fiscal_year}" if fiscal_year else ""
             return {
                 "success": False,
-                "error": f"No cash flow data found for {ticker}",
+                "error": f"No cash flow data found for {ticker} {period_desc}{year_desc}".strip(),
             }
 
         return {
@@ -195,6 +245,7 @@ def get_cash_flow(
             "statements": [
                 {
                     "fiscal_year": s.fiscal_year,
+                    "fiscal_period": s.fiscal_period,
                     "period_end": s.period_end.isoformat(),
                     "currency": s.currency,
                     "data": s.data,

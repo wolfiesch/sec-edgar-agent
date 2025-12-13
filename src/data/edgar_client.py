@@ -39,6 +39,57 @@ class EdgarClient:
         self.rate_limiter.wait()
         return func(*args, **kwargs)
 
+    def _parse_date(self, value: Any) -> date | None:
+        """Parse a value to a date object, handling strings and None."""
+        if value is None:
+            return None
+        if isinstance(value, date):
+            return value
+        if isinstance(value, str):
+            try:
+                return date.fromisoformat(value)
+            except ValueError:
+                # Try other common formats
+                for fmt in ["%Y-%m-%d", "%m/%d/%Y", "%Y%m%d"]:
+                    try:
+                        from datetime import datetime
+                        return datetime.strptime(value, fmt).date()
+                    except ValueError:
+                        continue
+        return None
+
+    def _dataframe_to_dict(self, df: Any) -> dict[str, Any]:
+        """Convert a financial statement DataFrame to a clean dict format."""
+        try:
+            # edgartools statement DataFrames typically have columns like:
+            # ['concept', 'label', '2025-09-27', '2024-09-28', 'level', 'abstract', ...]
+            # We want to extract the label and the most recent value
+            result = {}
+            if "label" not in df.columns:
+                return {}
+
+            # Find date columns (they look like YYYY-MM-DD)
+            date_cols = [c for c in df.columns if isinstance(c, str) and len(c) == 10 and c[4] == "-"]
+            if not date_cols:
+                return {}
+
+            # Use the most recent date column
+            latest_col = sorted(date_cols, reverse=True)[0]
+
+            for _, row in df.iterrows():
+                label = row.get("label", "")
+                if not label or row.get("abstract", False):
+                    continue
+                value = row.get(latest_col)
+                if value is not None and label:
+                    # Clean up label to be a valid key
+                    key = label.lower().replace(" ", "_").replace("[", "").replace("]", "")
+                    result[key] = value
+
+            return result
+        except Exception:
+            return {}
+
     def get_company(self, ticker: str) -> Company:
         """
         Get company information by ticker symbol.
@@ -156,6 +207,8 @@ class EdgarClient:
         ticker: str,
         statement_type: str = "income_statement",
         periods: int = 4,
+        fiscal_year: int | None = None,
+        quarter: int | None = None,
     ) -> list[FinancialStatement]:
         """
         Get financial statements for a company.
@@ -163,48 +216,169 @@ class EdgarClient:
         Args:
             ticker: Stock ticker symbol
             statement_type: balance_sheet, income_statement, or cash_flow
-            periods: Number of periods to retrieve
+            periods: Number of periods to retrieve (used if fiscal_year not specified)
+            fiscal_year: Specific fiscal year to retrieve (e.g., 2011)
+            quarter: Specific quarter (1, 2, or 3 for 10-Q; None for annual 10-K)
 
         Returns:
             List of FinancialStatement models
         """
-        cache_key = f"financials:{ticker.upper()}:{statement_type}:{periods}"
+        cache_key = f"financials:{ticker.upper()}:{statement_type}:{periods}:{fiscal_year}:{quarter}"
         cached = self.cache.get(cache_key)
         if cached is not None:
             return [FinancialStatement.model_validate(f) for f in cached]
 
-        logger.debug(f"Fetching {statement_type} for {ticker}")
+        logger.debug(f"Fetching {statement_type} for {ticker} (year={fiscal_year}, quarter={quarter})")
         edgar_company: EdgarCompany = self._rate_limited_call(
             EdgarCompany, ticker.upper()
         )
 
-        # Get the most recent 10-K or 10-Q filings
-        filings = edgar_company.get_filings(form="10-K").head(periods)
+        # Determine form type: 10-Q for quarterly, 10-K for annual
+        if quarter is not None and quarter in (1, 2, 3):
+            form_type = "10-Q"
+            fiscal_period = f"Q{quarter}"
+        else:
+            form_type = "10-K"
+            fiscal_period = "FY"
+
+        # Get filings
+        all_filings = edgar_company.get_filings(form=form_type)
+
+        # If specific fiscal_year requested, filter filings
+        if fiscal_year is not None:
+            # 10-K for fiscal year X is typically filed in Q1 of year X+1
+            # 10-Q for Q1 of year X is filed around May of year X
+            # 10-Q for Q2 of year X is filed around August of year X
+            # 10-Q for Q3 of year X is filed around November of year X
+            if form_type == "10-K":
+                # Look for 10-K with report_date in fiscal_year or filed in early fiscal_year+1
+                target_start = date(fiscal_year, 1, 1)
+                target_end = date(fiscal_year + 1, 6, 30)  # Give buffer for late filers
+            else:
+                # For 10-Q, look within the fiscal year
+                target_start = date(fiscal_year, 1, 1)
+                target_end = date(fiscal_year, 12, 31)
+
+            filtered_filings = []
+            for f in all_filings:
+                # Check if filing date is in our target range
+                if target_start <= f.filing_date <= target_end:
+                    # For 10-K, also check that report_date (period end) is in fiscal_year
+                    report_dt = self._parse_date(getattr(f, "report_date", None))
+                    if form_type == "10-K":
+                        if report_dt and report_dt.year == fiscal_year:
+                            filtered_filings.append(f)
+                        elif not report_dt and f.filing_date.year in (fiscal_year, fiscal_year + 1):
+                            # Fallback: accept if filed in fiscal_year or early next year
+                            filtered_filings.append(f)
+                    else:
+                        # For 10-Q, accept filings with report_date in the fiscal year
+                        # Note: quarter matching is complex due to varying fiscal year ends
+                        # We return all 10-Qs and let the consumer filter by fiscal_period
+                        if report_dt and report_dt.year == fiscal_year:
+                            filtered_filings.append(f)
+                        elif not report_dt:
+                            # Fallback: accept any 10-Q in the date range
+                            filtered_filings.append(f)
+
+                if len(filtered_filings) >= periods:
+                    break
+
+            filings_to_process = filtered_filings[:periods]
+        else:
+            # No specific year - get most recent periods
+            filings_to_process = list(all_filings.head(periods))
 
         statements = []
-        for filing in filings:
+        for filing in filings_to_process:
             try:
                 # edgartools provides financials via the filing object
-                tenk = filing.obj()
-                if not hasattr(tenk, "financials"):
+                filing_obj = filing.obj()
+                if not hasattr(filing_obj, "financials"):
                     continue
 
-                financials = tenk.financials
+                financials = filing_obj.financials
 
-                if statement_type == "balance_sheet" and hasattr(financials, "balance_sheet"):
-                    data = financials.balance_sheet.to_dict() if hasattr(financials.balance_sheet, "to_dict") else {}
-                elif statement_type == "income_statement" and hasattr(financials, "income_statement"):
-                    data = financials.income_statement.to_dict() if hasattr(financials.income_statement, "to_dict") else {}
-                elif statement_type == "cash_flow" and hasattr(financials, "cash_flow_statement"):
-                    data = financials.cash_flow_statement.to_dict() if hasattr(financials.cash_flow_statement, "to_dict") else {}
+                # Use get_financial_metrics() for comprehensive data, then filter by statement type
+                try:
+                    all_metrics = financials.get_financial_metrics() if hasattr(financials, "get_financial_metrics") else {}
+                except Exception:
+                    all_metrics = {}
+
+                # Filter metrics based on statement type
+                if statement_type == "balance_sheet":
+                    data = {
+                        k: v for k, v in all_metrics.items()
+                        if k in ["total_assets", "total_liabilities", "stockholders_equity",
+                                 "current_assets", "current_liabilities", "current_ratio", "debt_to_assets"]
+                    }
+                    # Also try to get detailed balance sheet if available
+                    if hasattr(financials, "balance_sheet"):
+                        try:
+                            stmt = financials.balance_sheet()
+                            if stmt and hasattr(stmt, "to_dataframe"):
+                                df = stmt.to_dataframe()
+                                data["_detailed"] = self._dataframe_to_dict(df)
+                        except Exception:
+                            pass
+                elif statement_type == "income_statement":
+                    data = {
+                        k: v for k, v in all_metrics.items()
+                        if k in ["revenue", "net_income"]
+                    }
+                    # Also try to get detailed income statement if available
+                    if hasattr(financials, "income_statement"):
+                        try:
+                            stmt = financials.income_statement()
+                            if stmt and hasattr(stmt, "to_dataframe"):
+                                df = stmt.to_dataframe()
+                                data["_detailed"] = self._dataframe_to_dict(df)
+                        except Exception:
+                            pass
+                elif statement_type == "cash_flow":
+                    data = {
+                        k: v for k, v in all_metrics.items()
+                        if k in ["operating_cash_flow", "capital_expenditures", "free_cash_flow"]
+                    }
+                    # Also try to get detailed cash flow if available
+                    if hasattr(financials, "cashflow_statement"):
+                        try:
+                            stmt = financials.cashflow_statement()
+                            if stmt and hasattr(stmt, "to_dataframe"):
+                                df = stmt.to_dataframe()
+                                data["_detailed"] = self._dataframe_to_dict(df)
+                        except Exception:
+                            pass
                 else:
                     continue
 
+                if not data:
+                    continue
+
+                # Determine fiscal year from report_date if available, else filing_date
+                report_dt = self._parse_date(getattr(filing, "report_date", None))
+                if report_dt:
+                    actual_fiscal_year = report_dt.year
+                    period_end_date = report_dt
+                else:
+                    # For 10-K filed in early year X+1, fiscal year is X
+                    if form_type == "10-K" and filing.filing_date.month <= 4:
+                        actual_fiscal_year = filing.filing_date.year - 1
+                    else:
+                        actual_fiscal_year = filing.filing_date.year
+                    period_end_date = filing.filing_date
+
+                # Determine fiscal period for 10-Q
+                actual_fiscal_period = fiscal_period
+                if form_type == "10-Q" and report_dt:
+                    q = (report_dt.month - 1) // 3 + 1
+                    actual_fiscal_period = f"Q{q}"
+
                 statement = FinancialStatement(
                     statement_type=statement_type,
-                    period_end=filing.filing_date,
-                    fiscal_year=filing.filing_date.year,
-                    fiscal_period="FY",
+                    period_end=period_end_date,
+                    fiscal_year=actual_fiscal_year,
+                    fiscal_period=actual_fiscal_period,
                     data=data,
                 )
                 statements.append(statement)
