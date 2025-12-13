@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from sqlmodel import Session
 
 from src.api.dependencies import get_db
-from src.tools.text_processing import detect_risk_changes  # type: ignore
+from src.tools.analysis import detect_risk_changes
 from src.utils.exceptions import FilingNotFound, SecApiError  # type: ignore
 from ..models.responses import FilingResponse
 
