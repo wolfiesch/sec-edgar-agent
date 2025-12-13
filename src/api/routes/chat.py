@@ -188,14 +188,32 @@ async def chat_stream(
             orchestrator = StreamingOrchestrator()
             loop = asyncio.get_event_loop()
 
-            # Execute the streaming orchestrator and collect results
+            # Create a queue to communicate between threads
+            queue: asyncio.Queue = asyncio.Queue()
+
             def run_streaming():
-                return list(orchestrator.run_streaming(query))
+                """Run orchestrator and put results in queue."""
+                try:
+                    for phase, message_text, data in orchestrator.run_streaming(query):
+                        # Put result in queue (use thread-safe call_soon_threadsafe)
+                        loop.call_soon_threadsafe(queue.put_nowait, (phase, message_text, data))
+                    # Signal completion
+                    loop.call_soon_threadsafe(queue.put_nowait, None)
+                except Exception as e:
+                    # Signal error
+                    loop.call_soon_threadsafe(queue.put_nowait, ("error", str(e), None))
+                    loop.call_soon_threadsafe(queue.put_nowait, None)
 
-            results = await loop.run_in_executor(_executor, run_streaming)
+            # Start streaming in background thread
+            _executor.submit(run_streaming)
 
-            # Send each result as an SSE event
-            for phase, message_text, data in results:
+            # Yield events as they arrive
+            while True:
+                result = await queue.get()
+                if result is None:  # Completion signal
+                    break
+
+                phase, message_text, data = result
                 event_data = {
                     "phase": phase,
                     "message": message_text,
