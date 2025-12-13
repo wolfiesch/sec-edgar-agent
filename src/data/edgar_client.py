@@ -29,6 +29,7 @@ class EdgarClient:
     """
 
     def __init__(self):
+        """Initialize client with rate limiting, caching, and SEC identity."""
         self.rate_limiter = get_rate_limiter(settings.sec_rate_limit)
         self.cache = get_cache()
         # Set edgartools identity (required by SEC)
@@ -318,7 +319,14 @@ class EdgarClient:
                             stmt = financials.balance_sheet()
                             if stmt and hasattr(stmt, "to_dataframe"):
                                 df = stmt.to_dataframe()
-                                data["_detailed"] = self._dataframe_to_dict(df)
+                                detailed = self._dataframe_to_dict(df)
+                                data["_detailed"] = detailed
+                                # Populate top-level keys from detailed if missing
+                                key_fields = ["total_assets", "total_liabilities", "stockholders_equity",
+                                             "current_assets", "current_liabilities", "cash_and_cash_equivalents"]
+                                for field in key_fields:
+                                    if field not in data and field in detailed:
+                                        data[field] = detailed[field]
                         except Exception:
                             pass
                 elif statement_type == "income_statement":
@@ -332,7 +340,17 @@ class EdgarClient:
                             stmt = financials.income_statement()
                             if stmt and hasattr(stmt, "to_dataframe"):
                                 df = stmt.to_dataframe()
-                                data["_detailed"] = self._dataframe_to_dict(df)
+                                detailed = self._dataframe_to_dict(df)
+                                data["_detailed"] = detailed
+                                # Populate top-level keys from detailed if missing
+                                if "revenue" not in data and "revenue" in detailed:
+                                    data["revenue"] = detailed["revenue"]
+                                if "net_income" not in data and "net_income" in detailed:
+                                    data["net_income"] = detailed["net_income"]
+                                if "gross_profit" not in data and "gross_profit" in detailed:
+                                    data["gross_profit"] = detailed["gross_profit"]
+                                if "operating_income" not in data and "operating_income" in detailed:
+                                    data["operating_income"] = detailed["operating_income"]
                         except Exception:
                             pass
                 elif statement_type == "cash_flow":
@@ -346,7 +364,15 @@ class EdgarClient:
                             stmt = financials.cashflow_statement()
                             if stmt and hasattr(stmt, "to_dataframe"):
                                 df = stmt.to_dataframe()
-                                data["_detailed"] = self._dataframe_to_dict(df)
+                                detailed = self._dataframe_to_dict(df)
+                                data["_detailed"] = detailed
+                                # Populate top-level keys from detailed if missing
+                                key_fields = ["operating_cash_flow", "capital_expenditures", "free_cash_flow",
+                                             "net_cash_from_operating_activities", "net_cash_from_investing_activities",
+                                             "net_cash_from_financing_activities"]
+                                for field in key_fields:
+                                    if field not in data and field in detailed:
+                                        data[field] = detailed[field]
                         except Exception:
                             pass
                 else:

@@ -49,6 +49,7 @@ class SynthesizerAgent(BaseAgent):
     """Agent responsible for synthesizing final responses."""
 
     def __init__(self, model: str | None = None):
+        """Instantiate a synthesis agent with the chosen language model."""
         super().__init__(AgentRole.SYNTHESIZER, model)
 
     def run(self, context: AgentContext) -> AgentResponse:
@@ -141,10 +142,29 @@ class SynthesizerAgent(BaseAgent):
                 elif "statements" in data:
                     lines.append(f"Financial data for {data.get('ticker', 'Unknown')}:")
                     for stmt in data["statements"][:3]:
-                        lines.append(f"  FY{stmt.get('fiscal_year', '?')}:")
+                        period = stmt.get("fiscal_period", "")
+                        lines.append(f"  FY{stmt.get('fiscal_year', '?')} {period}:")
                         stmt_data = stmt.get("data", {})
-                        for key, value in list(stmt_data.items())[:10]:
-                            lines.append(f"    - {key}: {self._format_value(value)}")
+
+                        # Unwrap _detailed if present (contains actual financial data)
+                        if "_detailed" in stmt_data and isinstance(stmt_data["_detailed"], dict):
+                            detailed = stmt_data["_detailed"]
+                            # Show key metrics first
+                            key_metrics = ["revenue", "net_income", "gross_profit", "operating_income",
+                                          "total_revenue", "earnings_per_share_(basic)", "earnings_per_share_(diluted)"]
+                            for key in key_metrics:
+                                if key in detailed:
+                                    lines.append(f"    - {key}: {self._format_value(detailed[key])}")
+                            # Then show other metrics (up to 15 more)
+                            other_count = 0
+                            for key, value in detailed.items():
+                                if key not in key_metrics and other_count < 15:
+                                    lines.append(f"    - {key}: {self._format_value(value)}")
+                                    other_count += 1
+                        else:
+                            # Fallback for data without _detailed
+                            for key, value in list(stmt_data.items())[:15]:
+                                lines.append(f"    - {key}: {self._format_value(value)}")
 
                 elif "by_insider" in data:
                     lines.append(f"Insider trading for {data.get('ticker', 'Unknown')}:")
