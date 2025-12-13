@@ -62,7 +62,7 @@ Context:
 
         # 4. Call OpenAI
         # We need an Async client. Ideally initialized once, but for now:
-        client = AsyncOpenAI(api_key=settings.openai_api_key)
+        client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
         messages = [{"role": "system", "content": system_prompt}]
         # Add history (excluding last msg which we use for query? Or include all?)
@@ -76,7 +76,7 @@ Context:
         messages.append({"role": "user", "content": current_query})
 
         response = await client.chat.completions.create(
-            model=settings.openai_model,
+            model=settings.OPENAI_MODEL,
             messages=messages,
             temperature=0,
         )

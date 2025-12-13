@@ -35,4 +35,14 @@ class Settings(BaseSettings):
         description="API key for protected endpoints"
     )
 
+    # OpenAI settings for chat endpoint
+    OPENAI_API_KEY: str = Field(
+        default="",
+        description="OpenAI API key for chat completions"
+    )
+    OPENAI_MODEL: str = Field(
+        default="gpt-4o-mini",
+        description="OpenAI model to use for chat"
+    )
+
 settings = Settings()
