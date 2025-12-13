@@ -1,18 +1,99 @@
 """Orchestrator for coordinating the multi-agent workflow."""
 
+import re
 import time
 from typing import Any
 
 import structlog
 
-from src.agents.base import AgentContext, Plan
+from src.agents.base import AgentContext, Plan, Task, TaskStatus
 from src.agents.executor import ExecutorAgent
 from src.agents.planner import PlannerAgent
 from src.agents.synthesizer import SynthesizerAgent
 from src.agents.validator import ValidatorAgent
 from src.config import settings
+from src.data.ticker_resolver import resolve_ticker
 
 logger = structlog.get_logger()
+
+
+# Simple query patterns that can bypass the planner
+SIMPLE_QUERY_PATTERNS = [
+    # Direct revenue queries
+    (r"(?:what\s+(?:is|was|were)\s+)?(\w+)(?:'s)?\s+(?:total\s+)?revenue", "get_income_statement"),
+    # Net income queries
+    (r"(?:what\s+(?:is|was|were)\s+)?(\w+)(?:'s)?\s+net\s+income", "get_income_statement"),
+    # EPS queries
+    (r"(?:what\s+(?:is|was|were)\s+)?(\w+)(?:'s)?\s+(?:eps|earnings\s+per\s+share)", "get_income_statement"),
+    # Operating income
+    (r"(?:what\s+(?:is|was|were)\s+)?(\w+)(?:'s)?\s+operating\s+income", "get_income_statement"),
+    # Total assets
+    (r"(?:what\s+(?:is|was|were)\s+)?(\w+)(?:'s)?\s+(?:total\s+)?assets", "get_balance_sheet"),
+    # Total debt
+    (r"(?:what\s+(?:is|was|were)\s+)?(\w+)(?:'s)?\s+(?:total\s+)?debt", "get_balance_sheet"),
+    # Cash
+    (r"(?:what\s+(?:is|was|were)\s+)?(\w+)(?:'s)?\s+(?:cash|cash\s+and\s+equivalents)", "get_balance_sheet"),
+    # Cash flow
+    (r"(?:what\s+(?:is|was|were)\s+)?(\w+)(?:'s)?\s+(?:operating\s+)?cash\s+flow", "get_cash_flow"),
+    # Company info
+    (r"(?:tell\s+me\s+about|what\s+is|info\s+(?:on|about)|company\s+info)\s+(\w+)", "get_company_info"),
+]
+
+
+def classify_query_complexity(query: str) -> tuple[str, str | None, str | None, int | None]:
+    """
+    Classify a query as simple, medium, or complex.
+
+    Returns:
+        Tuple of (complexity, ticker, tool_name, year)
+        - complexity: 'simple', 'medium', or 'complex'
+        - ticker: Extracted ticker if simple
+        - tool_name: Suggested tool if simple
+        - year: Extracted year if present
+    """
+    query_lower = query.lower().strip()
+
+    # Complex patterns - always need full planning
+    complex_patterns = [
+        r"\bcompare\b", r"\bversus\b", r"\bvs\.?\b",
+        r"\btrend\b", r"\bover\s+time\b", r"\bhistorical\b",
+        r"\brisk\s+factor", r"\bchange[sd]?\b", r"\bdiff",
+        r"\bwhy\b", r"\bhow\s+does\b", r"\bexplain\b",
+        r"\banalyz", r"\bsummar",
+    ]
+
+    for pattern in complex_patterns:
+        if re.search(pattern, query_lower):
+            return ("complex", None, None, None)
+
+    # Extract year if present
+    year_match = re.search(r"\b(20\d{2})\b", query)
+    year = int(year_match.group(1)) if year_match else None
+
+    # Check simple patterns
+    for pattern, tool_name in SIMPLE_QUERY_PATTERNS:
+        match = re.search(pattern, query_lower)
+        if match:
+            potential_ticker = match.group(1)
+            ticker = resolve_ticker(potential_ticker)
+            if ticker:
+                return ("simple", ticker, tool_name, year)
+
+    # Try to extract ticker for medium complexity
+    ticker = None
+    words = query.split()
+    for word in words:
+        clean = re.sub(r"[^A-Za-z]", "", word)
+        if clean:
+            resolved = resolve_ticker(clean)
+            if resolved:
+                ticker = resolved
+                break
+
+    if ticker:
+        return ("medium", ticker, None, year)
+
+    return ("complex", None, None, None)
 
 
 class Orchestrator:
@@ -27,6 +108,7 @@ class Orchestrator:
     """
 
     def __init__(self, model: str | None = None):
+        """Initialize orchestrator with agent instances sharing the same model."""
         self.model = model or settings.openai_model
         self.planner = PlannerAgent(model)
         self.executor = ExecutorAgent(model)
@@ -47,10 +129,16 @@ class Orchestrator:
         """
         start_time = time.time()
         query_preview = query[:80] + "..." if len(query) > 80 else query
+
+        # Pre-classify query complexity for latency optimization
+        complexity, ticker, tool_hint, year = classify_query_complexity(query)
+
         self.logger.info(
             "Orchestration started",
             query=query_preview,
             query_length=len(query),
+            complexity=complexity,
+            ticker=ticker,
             max_steps=self.max_steps,
         )
 
@@ -64,28 +152,62 @@ class Orchestrator:
         retries = 0
 
         try:
-            # Step 1: Planning
-            phase_start = time.time()
-            self.logger.info("Phase 1: Planning started")
-            plan_response = self.planner.run(context)
-            phase_elapsed = time.time() - phase_start
+            # FAST PATH: For simple queries, skip the planner LLM call
+            if complexity == "simple" and ticker and tool_hint:
+                phase_start = time.time()
+                self.logger.info(
+                    "Fast path: Skipping planner for simple query",
+                    ticker=ticker,
+                    tool=tool_hint,
+                    year=year,
+                )
 
-            if not plan_response.success:
-                self.logger.error(
-                    "Planning failed",
-                    error=plan_response.error,
+                # Build plan directly without LLM call
+                import uuid
+                task = Task(
+                    id=f"task_{uuid.uuid4().hex[:8]}",
+                    description=f"Get {tool_hint.replace('_', ' ')} for {ticker}",
+                    tool_hint=tool_hint,
+                    status=TaskStatus.PENDING,
+                )
+                context.plan = Plan(
+                    query=query,
+                    reasoning=f"Simple query for {ticker} {tool_hint}",
+                    tasks=[task],
+                    is_simple=True,
+                )
+
+                phase_elapsed = time.time() - phase_start
+                self.logger.info(
+                    "Phase 1: Fast path planning completed",
+                    task_count=1,
+                    is_simple=True,
                     elapsed_seconds=round(phase_elapsed, 2),
                 )
-                return f"Failed to create plan: {plan_response.error}"
+            else:
+                # STANDARD PATH: Use the planner LLM
+                phase_start = time.time()
+                self.logger.info("Phase 1: Planning started")
+                plan_response = self.planner.run(context)
+                phase_elapsed = time.time() - phase_start
+
+                if not plan_response.success:
+                    self.logger.error(
+                        "Planning failed",
+                        error=plan_response.error,
+                        elapsed_seconds=round(phase_elapsed, 2),
+                    )
+                    return f"Failed to create plan: {plan_response.error}"
+
+                self.logger.info(
+                    "Phase 1: Planning completed",
+                    task_count=len(context.plan.tasks) if context.plan else 0,
+                    is_simple=context.plan.is_simple if context.plan else True,
+                    elapsed_seconds=round(phase_elapsed, 2),
+                )
 
             task_count = len(context.plan.tasks) if context.plan else 0
             is_simple = context.plan.is_simple if context.plan else True
-            self.logger.info(
-                "Phase 1: Planning completed",
-                task_count=task_count,
-                is_simple=is_simple,
-                elapsed_seconds=round(phase_elapsed, 2),
-            )
 
             # Validation retry loop
             while retries < max_retries:
