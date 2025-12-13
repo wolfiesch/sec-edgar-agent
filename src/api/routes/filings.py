@@ -7,7 +7,7 @@ from sqlmodel import Session
 
 from src.api.dependencies import get_db
 from src.tools.analysis import detect_risk_changes
-from src.utils.exceptions import FilingNotFound, SecApiError  # type: ignore
+from src.api.exceptions import FilingNotFound, SecApiError
 from ..models.responses import FilingResponse
 
 router = APIRouter()
