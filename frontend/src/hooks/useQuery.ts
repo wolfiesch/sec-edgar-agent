@@ -13,6 +13,54 @@ interface UseQueryResult {
 
 const API_KEY = 'sec-api-demo';
 
+/**
+ * Map technical error messages to user-friendly versions
+ */
+function getFriendlyErrorMessage(error: string): string {
+    const lowerError = error.toLowerCase();
+
+    // Rate limiting
+    if (lowerError.includes('rate limit') || lowerError.includes('429') || lowerError.includes('too many requests')) {
+        return 'The SEC API rate limit was reached. Please wait a moment and try again.';
+    }
+
+    // Connection issues
+    if (lowerError.includes('failed to fetch') || lowerError.includes('network') || lowerError.includes('connection')) {
+        return 'Unable to connect to the server. Please check your internet connection and try again.';
+    }
+
+    // Timeout
+    if (lowerError.includes('timeout') || lowerError.includes('timed out')) {
+        return 'The request took too long. Try a simpler question or try again later.';
+    }
+
+    // Not found
+    if (lowerError.includes('not found') || lowerError.includes('404')) {
+        return 'The requested company or filing was not found. Please check the company name or ticker.';
+    }
+
+    // Authentication
+    if (lowerError.includes('401') || lowerError.includes('403') || lowerError.includes('unauthorized') || lowerError.includes('api key')) {
+        return 'Authentication failed. Please refresh the page and try again.';
+    }
+
+    // Server errors
+    if (lowerError.includes('500') || lowerError.includes('502') || lowerError.includes('503') || lowerError.includes('internal server')) {
+        return 'The server encountered an error. Please try again in a few moments.';
+    }
+
+    // OpenAI/LLM errors
+    if (lowerError.includes('openai') || lowerError.includes('llm') || lowerError.includes('model')) {
+        return 'The AI service is temporarily unavailable. Please try again shortly.';
+    }
+
+    // Default: return original if short enough, otherwise generic
+    if (error.length < 100) {
+        return error;
+    }
+    return 'An unexpected error occurred. Please try again.';
+}
+
 export function useQuery(): UseQueryResult {
     const [query, setQuery] = useState('');
     const [queryId, setQueryId] = useState<string | null>(null);
@@ -93,9 +141,14 @@ export function useQuery(): UseQueryResult {
                             const eventData = JSON.parse(dataMatch[1]);
 
                             // Create workflow event from SSE data
+                            // Apply friendly error message if this is an error phase
+                            const message = eventData.phase === 'error'
+                                ? getFriendlyErrorMessage(eventData.message)
+                                : eventData.message;
+
                             const workflowEvent: WorkflowEvent = {
                                 phase: eventData.phase as WorkflowPhase,
-                                message: eventData.message,
+                                message,
                                 data: eventData.data,
                                 timestamp: new Date().toISOString(),
                             };
@@ -117,9 +170,10 @@ export function useQuery(): UseQueryResult {
         } catch (e) {
             console.error('SSE connection error:', e);
             setConnectionStatus('error');
+            const rawMessage = e instanceof Error ? e.message : 'An error occurred';
             setEvents(prev => [...prev, {
                 phase: 'error',
-                message: e instanceof Error ? e.message : 'An error occurred',
+                message: getFriendlyErrorMessage(rawMessage),
                 data: null,
                 timestamp: new Date().toISOString()
             }]);

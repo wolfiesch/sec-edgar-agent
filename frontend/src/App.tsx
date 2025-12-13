@@ -16,7 +16,8 @@ function App() {
     isProcessing,
     reset,
     queryId,
-    query
+    query,
+    connectionStatus
   } = useQuery();
 
   const { history, addToHistory, clearHistory } = useQueryHistory();
@@ -132,7 +133,10 @@ function App() {
                         {/* Left: Workflow Feed */}
                         <div className="lg:col-span-4 space-y-6">
                             <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-4 h-[600px] overflow-y-auto custom-scrollbar">
-                                <WorkflowTimeline events={events} />
+                                <WorkflowTimeline
+                                    events={events}
+                                    connectionStatus={connectionStatus as 'disconnected' | 'connecting' | 'connected' | 'error'}
+                                />
                             </div>
                         </div>
 
