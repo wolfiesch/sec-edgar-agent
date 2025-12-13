@@ -105,7 +105,7 @@ class TestChatStream:
         # Should have error event
         assert len(events) == 1
         assert events[0]["phase"] == "error"
-        assert "Error processing query" in events[0]["message"]
+        assert "API error" in events[0]["message"]
 
     @patch("src.api.routes.chat.StreamingOrchestrator")
     def test_stream_cache_headers(

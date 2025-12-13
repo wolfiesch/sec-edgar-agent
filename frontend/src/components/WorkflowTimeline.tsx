@@ -72,19 +72,34 @@ function getPhaseColor(phase: string) {
     case 'error': return 'border-red-500 text-red-500';
     case 'complete': return 'border-green-500 text-green-500';
     case 'planning': return 'border-blue-500 text-blue-500';
+    case 'planned': return 'border-blue-400 text-blue-400';
     case 'executing': return 'border-purple-500 text-purple-500';
+    case 'tool_start': return 'border-orange-500 text-orange-500';
     case 'task_complete': return 'border-emerald-500 text-emerald-500';
     case 'validating': return 'border-yellow-500 text-yellow-500';
+    case 'validated': return 'border-green-400 text-green-400';
+    case 'validation_failed': return 'border-red-400 text-red-400';
+    case 'retrying': return 'border-amber-500 text-amber-500';
+    case 'warning': return 'border-yellow-400 text-yellow-400';
+    case 'synthesizing': return 'border-indigo-500 text-indigo-500';
     default: return 'border-gray-500 text-gray-500';
   }
 }
 
 function getPhaseIcon(phase: string) {
-   switch (phase) {
+  switch (phase) {
     case 'error': return <AlertCircle className="w-3 h-3" />;
+    case 'validation_failed': return <AlertCircle className="w-3 h-3" />;
+    case 'warning': return <AlertCircle className="w-3 h-3" />;
     case 'complete': return <CheckCircle2 className="w-3 h-3" />;
     case 'task_complete': return <CheckCircle2 className="w-3 h-3" />;
+    case 'validated': return <CheckCircle2 className="w-3 h-3" />;
+    case 'planned': return <CheckCircle2 className="w-3 h-3" />;
     case 'executing': return <Loader2 className="w-3 h-3 animate-spin" />;
+    case 'tool_start': return <Loader2 className="w-3 h-3 animate-spin" />;
+    case 'validating': return <Loader2 className="w-3 h-3 animate-spin" />;
+    case 'synthesizing': return <Loader2 className="w-3 h-3 animate-spin" />;
+    case 'retrying': return <Loader2 className="w-3 h-3 animate-spin" />;
     default: return <Circle className="w-3 h-3" />;
   }
 }

@@ -16,13 +16,19 @@ export interface ToolExecutionResult {
   citations: string[];
 }
 
-export type WorkflowPhase = 
-  | 'planning' 
-  | 'executing' 
+export type WorkflowPhase =
+  | 'planning'
+  | 'planned'
+  | 'executing'
+  | 'tool_start'
   | 'task_complete'
-  | 'validating' 
-  | 'synthesizing' 
-  | 'complete' 
+  | 'validating'
+  | 'validated'
+  | 'validation_failed'
+  | 'retrying'
+  | 'warning'
+  | 'synthesizing'
+  | 'complete'
   | 'error';
 
 export interface WorkflowEvent {
