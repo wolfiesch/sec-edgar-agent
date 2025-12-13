@@ -297,13 +297,33 @@ class StreamingOrchestrator(Orchestrator):
                 yield ("executing", f"Executing research tasks{attempt_msg}...", None)
 
                 while context.step_count < context.max_steps:
+                    # Find the next task to execute
+                    next_task = None
+                    for task in context.plan.tasks:
+                        if task.status.value in ["pending", "in_progress"]:
+                            next_task = task
+                            break
+
+                    # Show what we're about to do
+                    if next_task and next_task.status.value == "pending":
+                        tool_hint = next_task.tool_hint or "unknown tool"
+                        yield (
+                            "tool_start",
+                            f"🔧 Calling {tool_hint}: {next_task.description}",
+                            {
+                                "task_id": next_task.id,
+                                "description": next_task.description,
+                                "tool": tool_hint,
+                            },
+                        )
+
                     exec_response = self.executor.run(context)
 
                     if context.tool_results:
                         last_result = context.tool_results[-1]
                         yield (
                             "task_complete",
-                            f"Completed: {last_result['task_description']}",
+                            f"✅ Completed: {last_result['task_description']}",
                             last_result,
                         )
 
