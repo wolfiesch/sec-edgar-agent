@@ -7,10 +7,11 @@ import { TableParser } from './components/TableParser';
 import { SemanticSearch } from './components/SemanticSearch';
 import { QuickActions } from './components/QuickActions';
 import { CompareCompanies } from './components/CompareCompanies';
+import { FilingDiff } from './components/FilingDiff';
 import { ToastContainer, useToast } from './components/Toast';
 import { useQuery } from './hooks/useQuery';
 import { useQueryHistory } from './hooks/useQueryHistory';
-import { Layout, History as HistoryIcon, Table as TableIcon, MessageSquare, Search, GitCompare } from 'lucide-react';
+import { Layout, History as HistoryIcon, Table as TableIcon, MessageSquare, Search, GitCompare, FileSearch } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 function App() {
@@ -27,7 +28,7 @@ function App() {
   const { history, addToHistory, clearHistory } = useQueryHistory();
   const { toasts, dismissToast, success, error, info } = useToast();
   const [showHistory, setShowHistory] = useState(false);
-  const [activeTab, setActiveTab] = useState<'chat' | 'tables' | 'search' | 'compare'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'tables' | 'search' | 'compare' | 'changes'>('chat');
 
   const handleToast = (type: 'success' | 'error' | 'info', message: string) => {
     if (type === 'success') success(message);
@@ -112,6 +113,17 @@ function App() {
                         <GitCompare className="w-4 h-4" />
                         Compare
                     </button>
+                    <button
+                        onClick={() => setActiveTab('changes')}
+                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
+                            activeTab === 'changes'
+                                ? 'bg-gray-800 text-white shadow-sm'
+                                : 'text-gray-400 hover:text-gray-200'
+                        }`}
+                    >
+                        <FileSearch className="w-4 h-4" />
+                        Changes
+                    </button>
                 </div>
 
                 <div className="flex items-center gap-4 text-sm">
@@ -194,8 +206,10 @@ function App() {
                 <TableParser />
             ) : activeTab === 'search' ? (
                 <SemanticSearch />
-            ) : (
+            ) : activeTab === 'compare' ? (
                 <CompareCompanies onToast={handleToast} />
+            ) : (
+                <FilingDiff onToast={handleToast} />
             )}
         </main>
 

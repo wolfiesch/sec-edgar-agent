@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Plus, X, Loader2, TrendingUp, DollarSign, ArrowUpRight, ArrowDownRight, Minus, Download, Copy, Check } from 'lucide-react';
+import { Plus, X, Loader2, TrendingUp, DollarSign, ArrowUpRight, ArrowDownRight, Minus, Download, Copy, Check, BarChart3, LineChart, Table } from 'lucide-react';
+import { CompanyComparisonChart } from './TrendChart';
 
 interface CompareCompaniesProps {
   onToast?: (type: 'success' | 'error' | 'info', message: string) => void;
@@ -48,6 +49,9 @@ export function CompareCompanies({ onToast }: CompareCompaniesProps) {
   const [result, setResult] = useState<CompareResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [viewMode, setViewMode] = useState<'table' | 'chart'>('table');
+  const [chartType, setChartType] = useState<'bar' | 'line'>('bar');
+  const [chartMetric, setChartMetric] = useState<string>('revenue');
 
   const handleAddTicker = () => {
     if (tickers.length < 5) {
@@ -275,11 +279,38 @@ export function CompareCompanies({ onToast }: CompareCompaniesProps) {
       {/* Results */}
       {result && (
         <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-6 space-y-4">
-          {/* Export Buttons */}
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-100">
-              Comparison Results
-            </h3>
+          {/* Header with View Toggle and Export */}
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-4">
+              <h3 className="text-lg font-semibold text-gray-100">
+                Comparison Results
+              </h3>
+              {/* View Toggle */}
+              <div className="flex bg-gray-800 rounded-lg p-0.5">
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                    viewMode === 'table'
+                      ? 'bg-gray-700 text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <Table className="w-3.5 h-3.5" />
+                  Table
+                </button>
+                <button
+                  onClick={() => setViewMode('chart')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                    viewMode === 'chart'
+                      ? 'bg-gray-700 text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <BarChart3 className="w-3.5 h-3.5" />
+                  Chart
+                </button>
+              </div>
+            </div>
             <div className="flex gap-2">
               <button
                 onClick={handleCopyTable}
@@ -307,10 +338,73 @@ export function CompareCompanies({ onToast }: CompareCompaniesProps) {
             </div>
           </div>
 
-          {/* Comparison Table */}
-          <div className="overflow-x-auto">
-            <ComparisonTable result={result} />
-          </div>
+          {/* Chart Controls */}
+          {viewMode === 'chart' && (
+            <div className="flex items-center gap-4 flex-wrap">
+              {/* Metric Selector */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-400">Metric:</span>
+                <select
+                  value={chartMetric}
+                  onChange={(e) => setChartMetric(e.target.value)}
+                  className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {result.metrics.map((m) => (
+                    <option key={m} value={m}>
+                      {AVAILABLE_METRICS.find((am) => am.id === m)?.label || m}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {/* Chart Type Toggle */}
+              <div className="flex bg-gray-800 rounded-lg p-0.5">
+                <button
+                  onClick={() => setChartType('bar')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                    chartType === 'bar'
+                      ? 'bg-gray-700 text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <BarChart3 className="w-3.5 h-3.5" />
+                  Bar
+                </button>
+                <button
+                  onClick={() => setChartType('line')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                    chartType === 'line'
+                      ? 'bg-gray-700 text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <LineChart className="w-3.5 h-3.5" />
+                  Line
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Content: Table or Chart */}
+          {viewMode === 'table' ? (
+            <div className="overflow-x-auto">
+              <ComparisonTable result={result} />
+            </div>
+          ) : (
+            <div className="py-4">
+              <CompanyComparisonChart
+                companies={result.companies.map((c) => ({
+                  ticker: c.ticker,
+                  data: c.metrics[chartMetric]?.map((mv) => ({
+                    year: mv.year,
+                    value: mv.value,
+                  })) || [],
+                }))}
+                metric={chartMetric}
+                chartType={chartType}
+                height={350}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>

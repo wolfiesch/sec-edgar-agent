@@ -1,19 +1,29 @@
+"""Endpoints for retrieving filing metadata and available sections."""
+from typing import Any
 
 from edgar import Company
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel, Field
 
-from ...utils.citations import citation_to_url, create_citation_from_filing, format_citation
+from ...tools.analysis import detect_risk_changes
 from ..exceptions import FilingNotFound, SecApiError
 from ..models.responses import FilingResponse
 
 router = APIRouter()
+
+
+class DiffRequest(BaseModel):
+    """Request to compare filings between two years."""
+    ticker: str = Field(..., description="Stock ticker symbol")
+    year1: int = Field(..., description="First year (earlier)")
+    year2: int = Field(..., description="Second year (later)")
 
 @router.get("/{ticker}/{form_type}", response_model=FilingResponse)
 async def get_filing(
     ticker: str,
     form_type: str,
     year: int | None = Query(None, description="Filing year (default: latest)")
-):
+) -> dict[str, Any]:
     """
     Retrieve metadata for a specific SEC filing.
 
@@ -29,46 +39,60 @@ async def get_filing(
         selected_filing = None
         if year:
             # Filter by year
-            # Filing.filing_date is a date object
-            for f in filings:
-                if f.filing_date.year == year:
-                    selected_filing = f
-                    break
-            if not selected_filing:
-                raise FilingNotFound(ticker=ticker, form_type=form_type, year=year)
-        else:
-            selected_filing = filings[0] # Latest
+            filings = [f for f in filings if f.filing_date.year == year]
 
-        # Generate citation
-        citation = create_citation_from_filing(selected_filing, ticker=ticker)
+        if not filings:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No {form_type} filings found for {ticker}",
+            )
 
-        # Build response
-        # Using URL from filing object or generated one
-        url = selected_filing.url if hasattr(selected_filing, 'url') else citation_to_url(citation)
+        filing = filings[0]  # Latest
 
-        return FilingResponse(
-            ticker=ticker,
-            form_type=form_type,
-            filing_date=str(selected_filing.filing_date),
-            accession_no=selected_filing.accession_no,
-            url=url or "",
-            citation=format_citation(citation),
-            sections_available=[
-                "Item 1", "Item 1A", "Item 7", "Item 7A", "Item 8", "Item 9", "Item 9A"
-            ]  # Static list for demo, or extract if possible
-        )
-
-    except FilingNotFound:
-        raise
+        return {
+            "ticker": ticker,
+            "form_type": form_type,
+            "filing_date": str(filing.filing_date),
+            "accession_no": filing.accession_no,
+            "url": filing.url,
+            "citation": f"[{ticker} {form_type} {filing.filing_date.year}]",
+            "sections_available": [
+                "Item 1",
+                "Item 1A",
+                "Item 7",
+                "Item 8",
+            ],  # Can extract dynamically
+        }
     except Exception as e:
-        raise SecApiError(f"Failed to fetch filing: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/{ticker}/{form_type}/sections")
-async def list_sections(ticker: str, form_type: str, year: int | None = None):
+async def list_sections(
+    ticker: str, form_type: str, year: int | None = None
+) -> dict[str, Any]:
     """List available sections in a filing (for discovery)."""
-    # For demo, returning static common sections for 10-K
+    # TODO: Implement section extraction
     return {
         "ticker": ticker,
         "form_type": form_type,
-        "sections": ["Item 1", "Item 1A", "Item 7", "Item 8", "Item 15"]
+        "sections": ["Item 1", "Item 1A", "Item 7", "Item 8", "Item 15"],
     }
+
+
+@router.post("/diff")
+async def compare_filings(request: DiffRequest):
+    """
+    Compare risk factors between two annual filings.
+
+    Identifies new, removed, and modified risk factors between years.
+    """
+    try:
+        result = detect_risk_changes(
+            ticker=request.ticker,
+            year1=request.year1,
+            year2=request.year2,
+        )
+        return result
+    except Exception as e:
+        raise SecApiError(f"Failed to compare filings: {str(e)}")

@@ -46,6 +46,7 @@ class ExecutorAgent(BaseAgent):
     """Agent responsible for executing individual tasks using tools."""
 
     def __init__(self, model: str | None = None):
+        """Create an executor agent configured with an optional model override."""
         super().__init__(AgentRole.EXECUTOR, model)
 
     def run(self, context: AgentContext) -> AgentResponse:
@@ -331,74 +332,49 @@ class ExecutorAgent(BaseAgent):
         return enriched
 
     def _extract_ticker(self, query: str) -> str | None:
-        """Extract a ticker symbol from the query."""
+        """Extract a ticker symbol from the query using TickerResolver."""
         import re
 
-        # Company name to ticker mapping
-        company_to_ticker = {
-            "google": "GOOGL",
-            "alphabet": "GOOGL",
-            "apple": "AAPL",
-            "microsoft": "MSFT",
-            "amazon": "AMZN",
-            "meta": "META",
-            "facebook": "META",
-            "tesla": "TSLA",
-            "nvidia": "NVDA",
-            "jpmorgan": "JPM",
-            "jp morgan": "JPM",
-            "johnson & johnson": "JNJ",
-            "johnson and johnson": "JNJ",
-            "walmart": "WMT",
-            "procter & gamble": "PG",
-            "procter and gamble": "PG",
-            "mastercard": "MA",
-            "home depot": "HD",
-            "disney": "DIS",
-            "netflix": "NFLX",
-            "adobe": "ADBE",
-            "salesforce": "CRM",
-            "paypal": "PYPL",
-            "berkshire": "BRK-A",
-            "visa": "V",
-            "intel": "INTC",
-            "cisco": "CSCO",
-            "oracle": "ORCL",
-            "ibm": "IBM",
-            "coca-cola": "KO",
-            "coca cola": "KO",
-            "coke": "KO",
-            "pepsi": "PEP",
-            "pepsico": "PEP",
-        }
+        from src.data.ticker_resolver import resolve_ticker
 
-        # First, check for company names in the query
+        # Try each word/phrase in the query
         query_lower = query.lower()
-        for company, ticker in company_to_ticker.items():
-            if company in query_lower:
-                return ticker
 
-        # Look for common patterns
-        # Uppercase 1-5 letter words that could be tickers
-        words = query.upper().split()
-        for word in words:
-            # Clean punctuation
-            clean = re.sub(r"[^A-Z]", "", word)
-            if 1 <= len(clean) <= 5 and clean.isalpha():
-                # Common tickers
-                if clean in ["AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "META", "TSLA", "NVDA", "JPM", "V", "JNJ", "WMT", "PG", "MA", "HD", "DIS", "NFLX", "ADBE", "CRM", "PYPL", "BRK", "INTC", "CSCO", "ORCL", "IBM", "KO", "PEP"]:
-                    return clean
+        # First, try to resolve the entire query (might be just a company name)
+        result = resolve_ticker(query)
+        if result:
+            return result
 
-        # Look for "ticker" or "symbol" mentions
+        # Try common patterns: look for company names in context
+        # Check for patterns like "for Tesla" or "about Microsoft"
+        patterns = [
+            r"(?:for|about|of|regarding|from)\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)",
+            r"([A-Za-z]+(?:\s+[A-Za-z]+)?)'s\s+",
+            r"^([A-Za-z]+(?:\s+[A-Za-z]+)?)\s+revenue",
+            r"^([A-Za-z]+(?:\s+[A-Za-z]+)?)\s+financ",
+        ]
+
+        for pattern in patterns:
+            match = re.search(pattern, query, re.IGNORECASE)
+            if match:
+                potential_name = match.group(1).strip()
+                resolved = resolve_ticker(potential_name)
+                if resolved:
+                    return resolved
+
+        # Look for "ticker" or "symbol" mentions explicitly
         match = re.search(r"(?:ticker|symbol)[:\s]+([A-Z]{1,5})", query.upper())
         if match:
             return match.group(1)
 
-        # Take first capitalized word that looks like a ticker
+        # Try each word that looks like a ticker
+        words = query.split()
         for word in words:
-            clean = re.sub(r"[^A-Z]", "", word)
-            if 2 <= len(clean) <= 5:
-                return clean
+            clean = re.sub(r"[^A-Za-z]", "", word)
+            if 1 <= len(clean) <= 5:
+                resolved = resolve_ticker(clean)
+                if resolved:
+                    return resolved
 
         return None
 
