@@ -249,11 +249,24 @@ class ExecutorAgent(BaseAgent):
             # Extract ticker from query
             ticker = self._extract_ticker(context.query)
             if ticker and task.tool_hint in registry.list_tools():
-                self.logger.info(f"Fallback: calling {task.tool_hint} with ticker={ticker}")
-
                 # Build arguments based on tool
                 args: dict[str, Any] = {"ticker": ticker}
 
+                # Extract fiscal_year if mentioned in query or task description
+                fiscal_year = self._extract_fiscal_year(context.query)
+                if fiscal_year is None:
+                    fiscal_year = self._extract_fiscal_year(task.description)
+                if fiscal_year is not None:
+                    args["fiscal_year"] = fiscal_year
+
+                # Extract quarter if mentioned
+                quarter = self._extract_quarter(context.query)
+                if quarter is None:
+                    quarter = self._extract_quarter(task.description)
+                if quarter is not None:
+                    args["quarter"] = quarter
+
+                self.logger.info(f"Fallback: calling {task.tool_hint} with {args}")
                 result = registry.execute(task.tool_hint, args)
                 if result.success:
                     return result.result
@@ -264,6 +277,50 @@ class ExecutorAgent(BaseAgent):
         """Extract a ticker symbol from the query."""
         import re
 
+        # Company name to ticker mapping
+        company_to_ticker = {
+            "google": "GOOGL",
+            "alphabet": "GOOGL",
+            "apple": "AAPL",
+            "microsoft": "MSFT",
+            "amazon": "AMZN",
+            "meta": "META",
+            "facebook": "META",
+            "tesla": "TSLA",
+            "nvidia": "NVDA",
+            "jpmorgan": "JPM",
+            "jp morgan": "JPM",
+            "johnson & johnson": "JNJ",
+            "johnson and johnson": "JNJ",
+            "walmart": "WMT",
+            "procter & gamble": "PG",
+            "procter and gamble": "PG",
+            "mastercard": "MA",
+            "home depot": "HD",
+            "disney": "DIS",
+            "netflix": "NFLX",
+            "adobe": "ADBE",
+            "salesforce": "CRM",
+            "paypal": "PYPL",
+            "berkshire": "BRK-A",
+            "visa": "V",
+            "intel": "INTC",
+            "cisco": "CSCO",
+            "oracle": "ORCL",
+            "ibm": "IBM",
+            "coca-cola": "KO",
+            "coca cola": "KO",
+            "coke": "KO",
+            "pepsi": "PEP",
+            "pepsico": "PEP",
+        }
+
+        # First, check for company names in the query
+        query_lower = query.lower()
+        for company, ticker in company_to_ticker.items():
+            if company in query_lower:
+                return ticker
+
         # Look for common patterns
         # Uppercase 1-5 letter words that could be tickers
         words = query.upper().split()
@@ -272,7 +329,7 @@ class ExecutorAgent(BaseAgent):
             clean = re.sub(r"[^A-Z]", "", word)
             if 1 <= len(clean) <= 5 and clean.isalpha():
                 # Common tickers
-                if clean in ["AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "META", "TSLA", "NVDA", "JPM", "V", "JNJ", "WMT", "PG", "MA", "HD", "DIS", "NFLX", "ADBE", "CRM", "PYPL"]:
+                if clean in ["AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "META", "TSLA", "NVDA", "JPM", "V", "JNJ", "WMT", "PG", "MA", "HD", "DIS", "NFLX", "ADBE", "CRM", "PYPL", "BRK", "INTC", "CSCO", "ORCL", "IBM", "KO", "PEP"]:
                     return clean
 
         # Look for "ticker" or "symbol" mentions
@@ -285,5 +342,57 @@ class ExecutorAgent(BaseAgent):
             clean = re.sub(r"[^A-Z]", "", word)
             if 2 <= len(clean) <= 5:
                 return clean
+
+        return None
+
+    def _extract_fiscal_year(self, text: str) -> int | None:
+        """Extract a fiscal year from the text."""
+        import re
+
+        # Look for year patterns like "in 2017", "for 2020", "fiscal 2019", "FY2018", "FY 2018"
+        patterns = [
+            r"(?:in|for|fiscal|fy)\s*(\d{4})",  # in 2017, for 2020, fiscal 2019, FY2018
+            r"(\d{4})\s*(?:fiscal|annual|yearly)",  # 2017 fiscal year
+            r"'s?\s*(\d{4})\s+(?:revenue|income|earnings|financials)",  # 2017 revenue
+        ]
+
+        for pattern in patterns:
+            match = re.search(pattern, text.lower())
+            if match:
+                year = int(match.group(1))
+                # Sanity check: SEC EDGAR has data from roughly 1993 onwards
+                if 1993 <= year <= 2030:
+                    return year
+
+        # Also look for standalone 4-digit years that look like fiscal years
+        years = re.findall(r"\b(19\d{2}|20\d{2})\b", text)
+        for year_str in years:
+            year = int(year_str)
+            if 1993 <= year <= 2030:
+                return year
+
+        return None
+
+    def _extract_quarter(self, text: str) -> int | None:
+        """Extract a quarter number from the text."""
+        import re
+
+        text_lower = text.lower()
+
+        # Look for quarter patterns
+        patterns = [
+            (r"\bq(\d)\b", lambda m: int(m.group(1))),  # Q1, Q2, Q3, Q4
+            (r"\b(?:first|1st)\s+quarter", lambda m: 1),
+            (r"\b(?:second|2nd)\s+quarter", lambda m: 2),
+            (r"\b(?:third|3rd)\s+quarter", lambda m: 3),
+            (r"\b(?:fourth|4th)\s+quarter", lambda m: 4),
+        ]
+
+        for pattern, extractor in patterns:
+            match = re.search(pattern, text_lower)
+            if match:
+                quarter = extractor(match)
+                if 1 <= quarter <= 4:
+                    return quarter
 
         return None

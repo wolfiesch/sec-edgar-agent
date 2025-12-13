@@ -107,6 +107,8 @@ class TestGetIncomeStatement:
             ticker="MSFT",
             statement_type="income_statement",
             periods=3,
+            fiscal_year=None,
+            quarter=None,
         )
 
     @patch("src.tools.financials.get_edgar_client")
