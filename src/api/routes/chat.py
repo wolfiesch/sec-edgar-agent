@@ -2,14 +2,15 @@ import asyncio
 import json
 import time
 import uuid
+from collections.abc import AsyncGenerator
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 
 from src.agents.orchestrator import Orchestrator, StreamingOrchestrator
-from src.api.config import settings
 from src.api.middleware import verify_api_key
 from src.api.models.requests import ChatRequest, ChatResponse
 
@@ -141,121 +142,98 @@ def _serialize_for_json(obj: Any) -> Any:
         return str(obj)
 
 
-@router.websocket("/ws")
-async def chat_websocket(
-    websocket: WebSocket,
-    api_key: str = Query(None, alias="api_key"),
+@router.get("/stream")
+async def chat_stream(
+    query: str = Query(..., description="The question to ask about SEC filings"),
+    _api_key: str = Depends(verify_api_key),
 ):
     """
-    WebSocket endpoint for streaming chat with SEC filings.
+    Server-Sent Events (SSE) endpoint for streaming chat with SEC filings.
 
-    Connect with: ws://host/api/v1/chat/ws?api_key=YOUR_KEY
+    Usage:
+        GET /api/v1/chat/stream?query=What+was+Apple's+revenue+in+2023?
+        Headers: X-API-Key: YOUR_KEY
 
-    Send JSON message:
-        {"query": "What was Apple's revenue in 2023?"}
+    Response format (text/event-stream):
+        data: {"phase": "planning", "message": "Analyzing your query...", "data": null}
 
-    Receive streaming progress updates:
-        {"phase": "planning", "message": "Analyzing your query...", "data": null}
-        {"phase": "executing", "message": "Executing research tasks...", "data": null}
-        {"phase": "task_complete", "message": "Completed: Get company info", "data": {...}}
-        {"phase": "complete", "message": "Final answer here...", "data": {"elapsed": 5.2}}
+        data: {"phase": "executing", "message": "Executing research tasks...", "data": null}
+
+        data: {"phase": "complete", "message": "Final answer here...", "data": {"elapsed": 5.2}}
+
+    Phases:
+        - planning: Creating task plan
+        - planned: Plan created
+        - executing: Running research tasks
+        - task_complete: Individual task finished
+        - validating: Checking results
+        - validated: Results validated
+        - synthesizing: Generating response
+        - complete: Final answer (in message field)
+        - error: Error occurred
     """
-    # Verify API key
-    if api_key is None or api_key != settings.API_KEY:
-        await websocket.close(code=4001, reason="Invalid or missing API key")
-        return
+    request_id = str(uuid.uuid4())[:8]
 
-    await websocket.accept()
-    connection_id = str(uuid.uuid4())[:8]
+    logger.info(
+        "SSE stream request received",
+        request_id=request_id,
+        query=query[:100] + "..." if len(query) > 100 else query,
+    )
 
-    logger.info("WebSocket connection established", connection_id=connection_id)
+    async def event_generator() -> AsyncGenerator[str, None]:
+        start_time = time.time()
 
-    try:
-        while True:
-            # Wait for client message
-            data = await websocket.receive_text()
-
-            try:
-                message = json.loads(data)
-                query = message.get("query", "").strip()
-            except json.JSONDecodeError:
-                await websocket.send_json({
-                    "phase": "error",
-                    "message": "Invalid JSON. Send: {\"query\": \"your question\"}",
-                    "data": None,
-                })
-                continue
-
-            if not query:
-                await websocket.send_json({
-                    "phase": "error",
-                    "message": "Missing 'query' field in message",
-                    "data": None,
-                })
-                continue
-
-            request_id = str(uuid.uuid4())[:8]
-            start_time = time.time()
-
-            logger.info(
-                "WebSocket query received",
-                connection_id=connection_id,
-                request_id=request_id,
-                query=query[:100] + "..." if len(query) > 100 else query,
-            )
-
+        try:
             # Run streaming orchestrator in thread pool
             orchestrator = StreamingOrchestrator()
             loop = asyncio.get_event_loop()
 
-            # Create a generator wrapper that runs in executor
+            # Execute the streaming orchestrator and collect results
             def run_streaming():
                 return list(orchestrator.run_streaming(query))
 
-            try:
-                # Execute the streaming orchestrator
-                results = await loop.run_in_executor(_executor, run_streaming)
+            results = await loop.run_in_executor(_executor, run_streaming)
 
-                # Send each result as a WebSocket message
-                for phase, message_text, data in results:
-                    response = {
-                        "phase": phase,
-                        "message": message_text,
-                        "data": _serialize_for_json(data),
-                    }
-                    await websocket.send_json(response)
+            # Send each result as an SSE event
+            for phase, message_text, data in results:
+                event_data = {
+                    "phase": phase,
+                    "message": message_text,
+                    "data": _serialize_for_json(data),
+                }
+                yield f"data: {json.dumps(event_data)}\n\n"
 
-                elapsed = time.time() - start_time
-                logger.info(
-                    "WebSocket query completed",
-                    connection_id=connection_id,
-                    request_id=request_id,
-                    elapsed_seconds=round(elapsed, 2),
-                )
+            elapsed = time.time() - start_time
+            logger.info(
+                "SSE stream completed",
+                request_id=request_id,
+                elapsed_seconds=round(elapsed, 2),
+            )
 
-            except Exception as e:
-                elapsed = time.time() - start_time
-                error_msg = str(e)
+        except Exception as e:
+            elapsed = time.time() - start_time
+            error_msg = str(e)
 
-                logger.exception(
-                    "WebSocket query failed",
-                    connection_id=connection_id,
-                    request_id=request_id,
-                    error=error_msg,
-                    elapsed_seconds=round(elapsed, 2),
-                )
+            logger.exception(
+                "SSE stream failed",
+                request_id=request_id,
+                error=error_msg,
+                elapsed_seconds=round(elapsed, 2),
+            )
 
-                await websocket.send_json({
-                    "phase": "error",
-                    "message": f"Error processing query: {error_msg}",
-                    "data": None,
-                })
+            error_event = {
+                "phase": "error",
+                "message": f"Error processing query: {error_msg}",
+                "data": None,
+            }
+            yield f"data: {json.dumps(error_event)}\n\n"
 
-    except WebSocketDisconnect:
-        logger.info("WebSocket disconnected", connection_id=connection_id)
-    except Exception as e:
-        logger.exception("WebSocket error", connection_id=connection_id, error=str(e))
-        try:
-            await websocket.close(code=1011, reason="Internal server error")
-        except Exception:
-            pass
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+        },
+    )
