@@ -183,6 +183,15 @@ class ExecutorAgent(BaseAgent):
         if tool_calls:
             # Execute the first tool call
             tool_call = tool_calls[0]
+
+            # Enrich tool arguments with fiscal_year/quarter if missing
+            tool_call["input"] = self._enrich_tool_arguments(
+                tool_call["name"],
+                tool_call["input"],
+                context.query,
+                task.description
+            )
+
             self.logger.info(f"Calling tool: {tool_call['name']} with {tool_call['input']}")
 
             result = registry.execute(tool_call["name"], tool_call["input"])
@@ -272,6 +281,54 @@ class ExecutorAgent(BaseAgent):
                     return result.result
 
         return {"message": llm_text, "fallback": True}
+
+    def _enrich_tool_arguments(
+        self,
+        tool_name: str,
+        args: dict[str, Any],
+        query: str,
+        task_description: str
+    ) -> dict[str, Any]:
+        """
+        Enrich tool arguments with fiscal_year/quarter if they're mentioned
+        in the query but missing from the tool call arguments.
+
+        This fixes cases where the LLM calls tools without temporal parameters
+        even though they're clearly mentioned in the query.
+        """
+        # Tools that accept fiscal_year and quarter parameters
+        temporal_tools = {
+            "get_income_statement",
+            "get_balance_sheet",
+            "get_cash_flow",
+            "search_filings",
+            "get_filing_document",
+        }
+
+        if tool_name not in temporal_tools:
+            return args
+
+        enriched = dict(args)
+
+        # Add fiscal_year if missing but mentioned in query/task
+        if "fiscal_year" not in enriched or enriched.get("fiscal_year") is None:
+            fiscal_year = self._extract_fiscal_year(query)
+            if fiscal_year is None:
+                fiscal_year = self._extract_fiscal_year(task_description)
+            if fiscal_year is not None:
+                enriched["fiscal_year"] = fiscal_year
+                self.logger.info(f"Enriched tool call with fiscal_year={fiscal_year}")
+
+        # Add quarter if missing but mentioned in query/task
+        if "quarter" not in enriched or enriched.get("quarter") is None:
+            quarter = self._extract_quarter(query)
+            if quarter is None:
+                quarter = self._extract_quarter(task_description)
+            if quarter is not None:
+                enriched["quarter"] = quarter
+                self.logger.info(f"Enriched tool call with quarter={quarter}")
+
+        return enriched
 
     def _extract_ticker(self, query: str) -> str | None:
         """Extract a ticker symbol from the query."""
