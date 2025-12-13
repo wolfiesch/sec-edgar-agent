@@ -36,7 +36,7 @@ export function useQuery(): UseQueryResult {
 
         try {
             // Call the Fly.io chat API
-            const res = await fetch('/api/v1/chat/', {
+            const res = await fetch('/api/v1/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
