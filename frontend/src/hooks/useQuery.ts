@@ -1,5 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { useWebSocket } from './useWebSocket';
+import { useState, useCallback } from 'react';
 import type { WorkflowEvent } from '../types';
 
 interface UseQueryResult {
@@ -16,54 +15,77 @@ export function useQuery(): UseQueryResult {
     const [query, setQuery] = useState('');
     const [queryId, setQueryId] = useState<string | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
-    const sentQueryRef = useRef(false);
-
-    const { events, status: connectionStatus, sendMessage } = useWebSocket(queryId);
+    const [events, setEvents] = useState<WorkflowEvent[]>([]);
 
     const submitQuery = useCallback(async (q: string) => {
         setQuery(q);
         setIsProcessing(true);
-        sentQueryRef.current = false;
+        setEvents([]);
+
+        // Generate a simple query ID for history tracking
+        const newQueryId = `q_${Date.now()}`;
+        setQueryId(newQueryId);
+
+        // Add planning event
+        setEvents([{
+            phase: 'planning',
+            message: 'Analyzing your question...',
+            data: null,
+            timestamp: new Date().toISOString()
+        }]);
 
         try {
-            const res = await fetch('/api/query', {
+            // Call the Fly.io chat API
+            const res = await fetch('/api/v1/chat/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query: q })
+                body: JSON.stringify({
+                    messages: [{ role: 'user', content: q }],
+                    stream: false
+                })
             });
 
-            if (!res.ok) throw new Error('Failed to start query');
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.detail || 'Failed to get response');
+            }
 
             const data = await res.json();
-            setQueryId(data.query_id);
+
+            // Add execution event
+            setEvents(prev => [...prev, {
+                phase: 'executing',
+                message: 'Searching SEC filings...',
+                data: null,
+                timestamp: new Date().toISOString()
+            }]);
+
+            // Add completion event with the answer
+            setEvents(prev => [...prev, {
+                phase: 'complete',
+                message: data.answer,
+                data: { citations: data.citations, usage: data.usage },
+                timestamp: new Date().toISOString()
+            }]);
+
         } catch (e) {
             console.error(e);
+            setEvents(prev => [...prev, {
+                phase: 'error',
+                message: e instanceof Error ? e.message : 'An error occurred',
+                data: null,
+                timestamp: new Date().toISOString()
+            }]);
+        } finally {
             setIsProcessing(false);
-            alert('Failed to start query');
         }
     }, []);
-
-    // Send query over WebSocket once connected
-    useEffect(() => {
-        if (connectionStatus === 'connected' && query && queryId && !sentQueryRef.current) {
-            sendMessage(query);
-            sentQueryRef.current = true;
-        }
-    }, [connectionStatus, query, queryId, sendMessage]);
-
-    // Stop processing when complete or error
-    useEffect(() => {
-        const lastEvent = events[events.length - 1];
-        if (lastEvent && (lastEvent.phase === 'complete' || lastEvent.phase === 'error')) {
-            setIsProcessing(false);
-        }
-    }, [events]);
 
     const reset = useCallback(() => {
         setQuery('');
         setQueryId(null);
         setIsProcessing(false);
-        sentQueryRef.current = false;
+        setEvents([]);
     }, []);
 
     return {
@@ -71,7 +93,7 @@ export function useQuery(): UseQueryResult {
         queryId,
         isProcessing,
         events,
-        connectionStatus,
+        connectionStatus: 'connected', // Always "connected" for REST API
         submitQuery,
         reset
     };
