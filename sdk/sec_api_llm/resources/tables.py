@@ -1,3 +1,4 @@
+"""Table parsing resource for the SDK."""
 from typing import TYPE_CHECKING
 
 from ..models import ParsedTable
@@ -9,6 +10,7 @@ class TablesResource:
     """Tables resource for parsing SEC tables."""
 
     def __init__(self, client: "SecClient"):
+        """Store the API client used for HTTP calls."""
         self._client = client
 
     def parse(
@@ -39,13 +41,9 @@ class TablesResource:
         # Filter None values
         data = {k: v for k, v in data.items() if v is not None}
 
-        try:
-            response = self._client._request(
-                "POST",
-                "/api/v1/tables/parse",
-                json=data
-            )
-            return ParsedTable(**response)
-        except Exception as e:
-            # Could map to specific ParsingError if needed
-            raise e
+        response = self._client._request(
+            "POST",
+            "/tables/parse",
+            json=data
+        )
+        return ParsedTable(**response)

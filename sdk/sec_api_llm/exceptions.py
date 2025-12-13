@@ -1,3 +1,5 @@
+"""Custom exceptions for the SEC API LLM SDK."""
+
 class SecApiError(Exception):
     """Base exception for SEC API errors."""
     pass

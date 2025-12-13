@@ -1,9 +1,13 @@
+"""AI-related resources (search, chat, ingest) for the SDK."""
 
 from .models import ChatMessage, ChatResponse, SearchResponse
 
 
 class SearchResource:
+    """Wrapper around semantic search endpoints."""
+
     def __init__(self, client):
+        """Store reference to the shared API client."""
         self._client = client
 
     def query(self, query: str, ticker: str | None = None, section: str | None = None, limit: int = 5) -> SearchResponse:
@@ -18,7 +22,10 @@ class SearchResource:
         return SearchResponse(**data)
 
 class ChatResource:
+    """Resource for conversational access to filings."""
+
     def __init__(self, client):
+        """Store reference to the shared API client."""
         self._client = client
 
     def create(self, messages: list[dict | ChatMessage], ticker: str | None = None) -> ChatResponse:
@@ -39,7 +46,10 @@ class ChatResource:
         return ChatResponse(**data)
 
 class IngestResource:
+    """Resource for ingestion jobs."""
+
     def __init__(self, client):
+        """Store reference to the shared API client."""
         self._client = client
 
     def trigger(self, ticker: str, form_type: str, year: int) -> dict:

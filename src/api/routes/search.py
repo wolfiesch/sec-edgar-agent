@@ -1,3 +1,4 @@
+"""Search endpoints supporting semantic and full-text queries."""
 from datetime import date
 from typing import Any
 
@@ -60,11 +61,24 @@ async def search_filings(
         search_results = []
         for res in results:
             metadata = res.get("metadata", {})
-            # Construct citation string
+            # Construct citation string in standard format: [TICKER FORM YEAR, Section]
             ticker = metadata.get("ticker", "UNKNOWN")
-            section = metadata.get("section_name", "Unknown Section")
-            # Ideally we'd have year/form in metadata too, adding in Day 2
-            citation = f"[{ticker} {section}]"
+            form_type = metadata.get("form_type", "")
+            year = metadata.get("year", "")
+            section = metadata.get("section_name", "")
+
+            # Build citation parts: [TICKER FORM YEAR, Section]
+            base = ticker
+            if form_type:
+                base = f"{ticker} {form_type}"
+            if year:
+                base = f"{base} {year}"
+
+            citation_parts = [base]
+            if section and section not in ("Full Report", ""):
+                citation_parts.append(section)
+
+            citation = f"[{', '.join(citation_parts)}]"
 
             search_results.append(
                 SearchResult(

@@ -1,3 +1,4 @@
+"""Background ingestion workflow for pulling filings into the vector store."""
 import structlog
 from edgar import Company
 from sqlmodel import Session
@@ -68,7 +69,11 @@ def ingest_filing(job_id: int):
                 accession_number=target_filing.accession_no,
                 section_name="Full Report",
                 content=content,
-                metadata={"year": job.year, "filing_date": str(target_filing.filing_date)}
+                metadata={
+                    "year": job.year,
+                    "form_type": job.form_type,
+                    "filing_date": str(target_filing.filing_date),
+                }
             )
 
             # 5. Success

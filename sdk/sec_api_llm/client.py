@@ -1,9 +1,12 @@
+"""Client utilities for interacting with the SEC EDGAR Agent API."""
+
 import os
 
 import httpx
 
 from .exceptions import AuthenticationError, NotFoundError, SecApiError
 from .resources.filings import FilingsResource
+from .resources.search import SearchResource
 from .resources.tables import TablesResource
 
 
@@ -17,6 +20,7 @@ class SecClient:
         api_key: str | None = None,
         base_url: str = "http://localhost:8000/api/v1"
     ):
+        """Initialize the client with optional API key and base URL."""
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key or os.getenv("SEC_API_KEY")
 
@@ -30,8 +34,10 @@ class SecClient:
         # Resources
         self.filings = FilingsResource(self)
         self.tables = TablesResource(self)
+        self.search = SearchResource(self)
 
     def _get_headers(self) -> dict[str, str]:
+        """Build default headers including auth if available."""
         headers = {"Content-Type": "application/json"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
@@ -58,7 +64,9 @@ class SecClient:
         self._client.close()
 
     def __enter__(self):
+        """Allow usage as a context manager."""
         return self
 
     def __exit__(self, *args):
+        """Close the underlying HTTP client on context exit."""
         self.close()
