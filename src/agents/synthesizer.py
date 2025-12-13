@@ -121,6 +121,10 @@ class SynthesizerAgent(BaseAgent):
             task_desc = result.get("task_description", "Unknown task")
             data = result.get("result", {})
 
+            # Unwrap executor's tool wrapper if present
+            if isinstance(data, dict) and "tool" in data and "output" in data:
+                data = data["output"]
+
             lines.append(f"\n### {task_desc}")
 
             if isinstance(data, dict):
