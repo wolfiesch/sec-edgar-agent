@@ -413,7 +413,7 @@ class TestGenerateWatchlistSummary:
         )
 
         # Mock get_filings to return different results based on form_type
-        def mock_get_filings(ticker, form_type, limit):
+        def mock_get_filings(ticker: str, form_type: str, limit: int) -> list[Filing]:
             if form_type == "10-K":
                 return [filing_10k]
             elif form_type == "8-K":

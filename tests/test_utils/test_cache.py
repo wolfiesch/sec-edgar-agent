@@ -3,6 +3,7 @@
 import json
 import tempfile
 import time
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -14,7 +15,7 @@ class TestFilingCache:
     """Tests for FilingCache class."""
 
     @pytest.fixture
-    def temp_cache_dir(self) -> Path:
+    def temp_cache_dir(self) -> Generator[Path, None, None]:
         """Create a temporary cache directory."""
         with tempfile.TemporaryDirectory() as tmpdir:
             yield Path(tmpdir)
@@ -66,7 +67,7 @@ class TestFilingCache:
     def test_get_expired_key(self, cache: FilingCache) -> None:
         """Test that expired keys return None."""
         # Set with very short TTL (1ms)
-        cache.set("test_key", "value", ttl_seconds=0.001)
+        cache.set("test_key", "value", ttl_seconds=1)
         time.sleep(0.01)  # Wait for expiration
 
         result = cache.get("test_key")
@@ -76,7 +77,7 @@ class TestFilingCache:
         self, cache: FilingCache, temp_cache_dir: Path
     ) -> None:
         """Test that getting expired key deletes the file."""
-        cache.set("test_key", "value", ttl_seconds=0.001)
+        cache.set("test_key", "value", ttl_seconds=1)
         time.sleep(0.01)
 
         cache.get("test_key")
@@ -123,14 +124,16 @@ class TestFilingCache:
     def test_clear_expired_only_removes_expired(self, cache: FilingCache) -> None:
         """Test that clear_expired only removes expired entries."""
         # Set one expired, one valid
-        cache.set("expired", "value", ttl_seconds=0.001)
-        time.sleep(0.01)
-        cache.set("valid", "value", ttl_seconds=60)
+        cache.set("key1", "value1", ttl_seconds=1)
+        # Should exist immediately
+        assert cache.get("key1") == "value1"
+        time.sleep(1.1) # Wait for expiration
+        cache.set("key2", "value2", ttl_seconds=60)
 
         count = cache.clear_expired()
         assert count == 1
-        assert cache.get("expired") is None
-        assert cache.get("valid") == "value"
+        assert cache.get("key1") is None
+        assert cache.get("key2") == "value2"
 
     def test_clear_expired_no_expired_entries(self, cache: FilingCache) -> None:
         """Test clear_expired when no entries are expired."""
@@ -179,7 +182,7 @@ class TestFilingCacheDataTypes:
     """Tests for caching different data types."""
 
     @pytest.fixture
-    def cache(self) -> FilingCache:
+    def cache(self) -> Generator[FilingCache, None, None]:
         """Create a cache instance."""
         with tempfile.TemporaryDirectory() as tmpdir:
             yield FilingCache(cache_dir=Path(tmpdir), ttl_seconds=60)

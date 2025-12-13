@@ -1,12 +1,13 @@
 """Endpoints for retrieving filing metadata and available sections."""
 from typing import Any
-
 from edgar import Company
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+from sqlmodel import Session
 
-from ...tools.analysis import detect_risk_changes
-from ..exceptions import FilingNotFound, SecApiError
+from src.api.dependencies import get_db
+from src.tools.text_processing import detect_risk_changes  # type: ignore
+from src.utils.exceptions import FilingNotFound, SecApiError  # type: ignore
 from ..models.responses import FilingResponse
 
 router = APIRouter()
@@ -36,7 +37,6 @@ async def get_filing(
         if not filings:
             raise FilingNotFound(ticker=ticker, form_type=form_type)
 
-        selected_filing = None
         if year:
             # Filter by year
             filings = [f for f in filings if f.filing_date.year == year]
@@ -67,6 +67,21 @@ async def get_filing(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+
+
+
+@router.get("/{accession_number}/html")
+async def download_filing_html(
+    accession_number: str,
+    db: Session = Depends(get_db),
+) -> str:
+    """
+    Download the HTML content of a filing.
+    """
+    # TODO: Implement actual HTML retrieval logic using accession_number and db
+    return f"<html><body><h1>HTML content for {accession_number}</h1></body></html>"
+
+
 @router.get("/{ticker}/{form_type}/sections")
 async def list_sections(
     ticker: str, form_type: str, year: int | None = None
@@ -81,7 +96,7 @@ async def list_sections(
 
 
 @router.post("/diff")
-async def compare_filings(request: DiffRequest):
+async def compare_filings(request: DiffRequest) -> dict[str, Any]:
     """
     Compare risk factors between two annual filings.
 
@@ -93,6 +108,6 @@ async def compare_filings(request: DiffRequest):
             year1=request.year1,
             year2=request.year2,
         )
-        return result
+        return dict(result)
     except Exception as e:
         raise SecApiError(f"Failed to compare filings: {str(e)}")

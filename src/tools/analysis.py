@@ -81,32 +81,59 @@ def analyze_historical_trends(
             }
 
         # Sort by year (oldest first)
-        data_points.sort(key=lambda x: x["year"])
+        data_points.sort(key=lambda x: int(str(x.get("year", 0))))
 
         # Calculate YoY changes
         for i in range(1, len(data_points)):
-            prev = data_points[i - 1]["value"]
-            curr = data_points[i]["value"]
+            prev_val = data_points[i - 1].get("value", 0)
+            curr_val = data_points[i].get("value", 0)
+            
+        try:
+            prev_float = float(str(prev_val)) if prev_val is not None else 0.0
+            curr_float = float(str(curr_val)) if curr_val is not None else 0.0
+            
+            prev = prev_float
+            curr = curr_float
+        except (ValueError, TypeError):
+            prev = 0.0
+            curr = 0.0
+                
             if prev != 0:
-                change_pct = ((curr - prev) / abs(prev)) * 100
+                change_pct: float | None = ((curr - prev) / abs(prev)) * 100
             else:
                 change_pct = None
             data_points[i]["yoy_change"] = curr - prev
             data_points[i]["yoy_change_pct"] = change_pct
 
         # Calculate CAGR (Compound Annual Growth Rate)
-        first_value = data_points[0]["value"]
-        last_value = data_points[-1]["value"]
+        first_val = data_points[0].get("value", 0)
+        last_val = data_points[-1].get("value", 0)
+        
+        try:
+            first_val = float(str(first_val)) if first_val is not None else 0.0
+            last_val = float(str(last_val)) if last_val is not None else 0.0
+        except (ValueError, TypeError):
+            first_val = 0.0
+            last_val = 0.0
+            
         num_years = len(data_points) - 1
 
-        if first_value > 0 and last_value > 0 and num_years > 0:
-            cagr = ((last_value / first_value) ** (1 / num_years) - 1) * 100
+        if first_val > 0 and last_val > 0 and num_years > 0:
+            cagr: float | None = ((last_val / first_val) ** (1 / num_years) - 1) * 100
         else:
             cagr = None
 
         # Determine trend direction
-        positive_changes = sum(1 for dp in data_points[1:] if dp.get("yoy_change", 0) > 0)
-        negative_changes = sum(1 for dp in data_points[1:] if dp.get("yoy_change", 0) < 0)
+        # Ensure values are cast to float for comparison
+        yoy_changes = []
+        for dp in data_points[1:]:
+            val = dp.get("yoy_change", 0)
+            if val is None:
+                val = 0
+            yoy_changes.append(float(str(val)))
+
+        positive_changes = sum(1 for x in yoy_changes if x > 0)
+        negative_changes = sum(1 for x in yoy_changes if x < 0)
 
         if positive_changes > negative_changes * 2:
             trend = "strong_growth"
@@ -128,15 +155,16 @@ def analyze_historical_trends(
             "success": True,
             "ticker": ticker.upper(),
             "metric": metric,
-            "period": f"{data_points[0]['year']}-{data_points[-1]['year']}",
+            "period": f"{data_points[0].get('year')}-{data_points[-1].get('year')}",
             "data_points": data_points,
             "summary": {
                 "trend": trend,
                 "cagr": round(cagr, 2) if cagr else None,
-                "total_change": last_value - first_value,
-                "total_change_pct": ((last_value - first_value) / abs(first_value) * 100) if first_value != 0 else None,
+                "total_change": last_val - first_val,
+                "total_change_pct": ((last_val - first_val) / abs(first_val) * 100) if first_val != 0 else None,
             },
             "narrative": narrative,
+            "error": None
         }
 
     except Exception as e:
@@ -170,6 +198,7 @@ def _generate_trend_narrative(
 
     # Format values
     def fmt(val: float) -> str:
+        """Format numeric values with currency units for readability."""
         if abs(val) >= 1e9:
             return f"${val/1e9:.1f}B"
         elif abs(val) >= 1e6:
@@ -246,7 +275,7 @@ def compare_companies(
             income = client.get_financials(ticker, "income_statement", 1)
             balance = client.get_financials(ticker, "balance_sheet", 1)
 
-            company_data = {
+            company_data: dict[str, Any] = {
                 "ticker": ticker.upper(),
                 "name": company.name,
                 "metrics": {},
@@ -584,7 +613,7 @@ SIC_PEER_GROUPS: dict[str, list[str]] = {
     "7379": ["IBM", "ACN", "INFY", "WIT"],  # Computer Related Services
 
     # Internet & Communication Services
-    "7370": ["GOOGL", "META", "SNAP", "PINS", "TWTR"],  # Internet Services
+    "7370_INTERNET": ["GOOGL", "META", "SNAP", "PINS", "TWTR"],  # Internet Services (suffix to avoid dupe)
     "4813": ["T", "VZ", "TMUS", "CMCSA"],  # Telephone Communications
     "4841": ["NFLX", "DIS", "PARA", "WBD", "CMCSA"],  # Cable & TV Services
 

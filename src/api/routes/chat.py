@@ -1,3 +1,4 @@
+"""Chat endpoints backed by the multi-agent orchestrator."""
 import asyncio
 import json
 import time
@@ -7,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket
 from fastapi.responses import StreamingResponse
 
 from src.agents.orchestrator import Orchestrator, StreamingOrchestrator
@@ -25,7 +26,7 @@ _executor = ThreadPoolExecutor(max_workers=4)
 async def chat(
     request: ChatRequest,
     _api_key: str = Depends(verify_api_key),
-):
+) -> ChatResponse:
     """
     Chat with SEC filings using the multi-agent orchestrator.
 
@@ -142,11 +143,27 @@ def _serialize_for_json(obj: Any) -> Any:
         return str(obj)
 
 
+@router.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket) -> None:
+    """
+    WebSocket endpoint for real-time chat...
+    """
+    await websocket.accept()
+    try:
+        while True:
+            data = await websocket.receive_text()
+            await websocket.send_text(f"Message text was: {data}")
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+    finally:
+        await websocket.close()
+
+
 @router.get("/stream")
 async def chat_stream(
     query: str = Query(..., description="The question to ask about SEC filings"),
     _api_key: str = Depends(verify_api_key),
-):
+) -> StreamingResponse:
     """
     Server-Sent Events (SSE) endpoint for streaming chat with SEC filings.
 
@@ -181,6 +198,7 @@ async def chat_stream(
     )
 
     async def event_generator() -> AsyncGenerator[str, None]:
+        """Yield server-sent events as orchestration phases complete."""
         start_time = time.time()
 
         try:
@@ -191,7 +209,7 @@ async def chat_stream(
             # Create a queue to communicate between threads
             queue: asyncio.Queue = asyncio.Queue()
 
-            def run_streaming():
+            def run_streaming() -> None:
                 """Run orchestrator and put results in queue."""
                 try:
                     for phase, message_text, data in orchestrator.run_streaming(query):

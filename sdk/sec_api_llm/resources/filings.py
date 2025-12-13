@@ -29,7 +29,7 @@ class FilingsResource:
         """
         params = {}
         if year:
-            params["year"] = year
+            params["year"] = int(year)
 
         response = self._client._request(
             "GET",

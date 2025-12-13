@@ -1,4 +1,4 @@
-
+"""Response models returned by the API."""
 from pydantic import BaseModel
 
 

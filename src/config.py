@@ -21,6 +21,10 @@ class Settings(BaseSettings):
         default="",
         description="OpenAI API key",
     )
+    anthropic_api_key: str = Field(
+        default="",
+        description="Anthropic API key",
+    )
     openai_model: str = Field(
         default="gpt-4o",
         description="OpenAI model to use (e.g., gpt-4o, gpt-4-turbo, gpt-3.5-turbo)",

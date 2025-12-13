@@ -10,7 +10,6 @@ from pathlib import Path
 
 from openai import OpenAI
 from rich.console import Console
-from rich.panel import Panel
 
 console = Console()
 
@@ -117,7 +116,7 @@ Please provide a direct, concise answer. Include the numeric value if applicable
     total_count = len(results)
     accuracy = correct_count / total_count if total_count > 0 else 0
 
-    console.print(f"\n[bold]LLM Comprehension Results:[/bold]")
+    console.print("\n[bold]LLM Comprehension Results:[/bold]")
     console.print(f"  Correct: {correct_count}/{total_count}")
     console.print(f"  Accuracy: {accuracy * 100:.0f}%")
 
@@ -140,6 +139,7 @@ Please provide a direct, concise answer. Include the numeric value if applicable
 def main() -> None:
     """Main execution function."""
     import os
+
     from dotenv import load_dotenv
 
     load_dotenv()
@@ -158,7 +158,7 @@ def main() -> None:
         console.print("Run parse_inline_xbrl.py first")
         return
 
-    with open(table_file, "r") as f:
+    with open(table_file) as f:
         table_markdown = f.read()
 
     # Test LLM comprehension
@@ -167,7 +167,7 @@ def main() -> None:
     # Display summary
     console.print("\n" + "="*60)
     console.print("[bold]Investigation Summary:[/bold]")
-    console.print(f"  Parsing Accuracy: 100.0%")
+    console.print("  Parsing Accuracy: 100.0%")
     console.print(f"  LLM Comprehension: {results['accuracy'] * 100:.0f}%")
     console.print("=" * 60)
 

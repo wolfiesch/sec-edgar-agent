@@ -21,6 +21,7 @@ class FilingCache:
         cache_dir: Path | None = None,
         ttl_seconds: int | None = None,
     ):
+        """Configure cache directory and TTL, creating storage if needed."""
         self.cache_dir = cache_dir or settings.cache_dir
         self.ttl_seconds = ttl_seconds or settings.cache_ttl_seconds
         self.cache_dir.mkdir(parents=True, exist_ok=True)

@@ -38,6 +38,7 @@ class ToolRegistry:
     """
 
     def __init__(self) -> None:
+        """Initialize an empty registry for tool definitions."""
         self._tools: dict[str, ToolDefinition] = {}
 
     def register(
@@ -72,6 +73,7 @@ class ToolRegistry:
         """
 
         def decorator(func: Callable[P, R]) -> Callable[P, R]:
+            """Register the wrapped callable and return it unchanged."""
             self._tools[name] = ToolDefinition(
                 name=name,
                 description=description,

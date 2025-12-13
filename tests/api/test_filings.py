@@ -6,7 +6,27 @@ from src.api.main import app
 
 client = TestClient(app)
 
-def test_get_filing_mocked():
+def test_get_filing_404(client: TestClient) -> None:
+    """Test filing endpoint with mocks."""
+    mock_filing = MagicMock()
+    mock_filing.filing_date.year = 2024
+    mock_filing.filing_date.__str__.return_value = "2024-01-01"
+    mock_filing.accession_no = "000123"
+    mock_filing.url = "http://sec.gov/filing"
+    mock_filing.form = "10-K"
+    mock_filing.ticker = "AAPL" # Ensure ticker is present for citation
+
+    with patch("edgar.Company") as mock_company_cls:
+        mock_company = mock_company_cls.return_value
+        mock_company.get_filings.return_value = [] # No filings found
+
+        response = client.get("/api/v1/filings/AAPL/10-K?year=2024")
+
+        assert response.status_code == 404
+        data = response.json()
+        assert data["detail"] == "Filing not found for ticker AAPL, form 10-K, and year 2024."
+
+def test_get_filing_mocked() -> None:
     """Test filing endpoint with mocks."""
     mock_filing = MagicMock()
     mock_filing.filing_date.year = 2024

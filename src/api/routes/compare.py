@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from src.data.edgar_client import get_edgar_client
@@ -50,11 +50,12 @@ INCOME_METRICS = {"revenue", "net_income", "gross_profit", "operating_income", "
 BALANCE_METRICS = {"total_assets", "total_debt", "cash", "total_liabilities", "stockholders_equity"}
 
 
-def get_metric_value(data: dict, metric: str) -> float | None:
+def get_metric_value(data: dict[str, Any], metric: str) -> float | None:
     """Extract metric value from statement data with various field name mappings."""
     # Direct match
     if metric in data:
-        return data[metric]
+        value = data[metric]
+        return float(value) if value is not None else None
 
     # Common field name mappings
     mappings = {
@@ -72,12 +73,13 @@ def get_metric_value(data: dict, metric: str) -> float | None:
 
     for field_name in mappings.get(metric, []):
         if field_name in data:
-            return data[field_name]
+            value = data[field_name]
+            return float(value) if value is not None else None
 
     return None
 
 
-def calculate_derived_metrics(data: dict, metric: str) -> float | None:
+def calculate_derived_metrics(data: dict[str, Any], metric: str) -> float | None:
     """Calculate derived metrics like margins."""
     if metric == "gross_margin":
         revenue = get_metric_value(data, "revenue")
@@ -95,7 +97,7 @@ def calculate_derived_metrics(data: dict, metric: str) -> float | None:
 
 
 @router.post("", response_model=CompareResponse)
-async def compare_companies(request: CompareRequest):
+async def compare_companies(request: CompareRequest) -> CompareResponse:
     """
     Compare multiple companies across financial metrics.
 

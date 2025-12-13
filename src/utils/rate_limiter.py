@@ -14,6 +14,7 @@ class RateLimiter:
     """
 
     def __init__(self, requests_per_second: float = 10.0):
+        """Configure limits and internal tracking structures."""
         self.requests_per_second = requests_per_second
         self.min_interval = 1.0 / requests_per_second
         self._lock = Lock()

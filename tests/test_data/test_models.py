@@ -47,7 +47,7 @@ class TestCompanyModel:
     def test_company_missing_required_field(self) -> None:
         """Test that missing required fields raise validation error."""
         with pytest.raises(ValidationError) as exc_info:
-            Company(cik="0000320193", ticker="AAPL")  # Missing name
+            Company(cik="0000320193", ticker="AAPL")  # type: ignore [call-arg]
 
         errors = exc_info.value.errors()
         assert any(e["loc"] == ("name",) for e in errors)
@@ -107,7 +107,7 @@ class TestFinancialStatementModel:
         assert stmt.statement_type == "income_statement"
         assert stmt.fiscal_year == 2024
         assert stmt.fiscal_period == "Q4"
-        assert stmt.currency == "USD"  # Default
+        assert stmt.currency == "USD"
         assert stmt.data["Revenue"] == 100000000
 
     def test_financial_statement_custom_currency(self) -> None:
@@ -357,7 +357,7 @@ class TestModelValidation:
             Filing(
                 accession_number="0000320193-24-000123",
                 form_type="10-K",
-                filing_date="not-a-date",  # type: ignore
+                filing_date="not-a-date",
                 company=Company(cik="0000320193", ticker="AAPL", name="Apple Inc."),
             )
 

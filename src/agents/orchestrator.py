@@ -420,6 +420,9 @@ class StreamingOrchestrator(Orchestrator):
 
                 while context.step_count < context.max_steps:
                     # Find the next task to execute
+                    if not context.plan:
+                        break
+                        
                     next_task = None
                     for task in context.plan.tasks:
                         if task.status.value in ["pending", "in_progress"]:

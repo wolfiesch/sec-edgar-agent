@@ -279,7 +279,9 @@ class ExecutorAgent(BaseAgent):
                 self.logger.info(f"Fallback: calling {task.tool_hint} with {args}")
                 result = registry.execute(task.tool_hint, args)
                 if result.success:
-                    return result.result
+                    if isinstance(result.result, dict):
+                        return result.result
+                    return {"result": str(result.result)}
 
         return {"message": llm_text, "fallback": True}
 
@@ -337,10 +339,7 @@ class ExecutorAgent(BaseAgent):
 
         from src.data.ticker_resolver import resolve_ticker
 
-        # Try each word/phrase in the query
-        query_lower = query.lower()
 
-        # First, try to resolve the entire query (might be just a company name)
         result = resolve_ticker(query)
         if result:
             return result

@@ -21,7 +21,9 @@ def _load_watchlist() -> dict[str, Any]:
     if WATCHLIST_FILE.exists():
         try:
             with open(WATCHLIST_FILE) as f:
-                return json.load(f)
+                data = json.load(f)
+                if isinstance(data, dict):
+                    return data
         except (json.JSONDecodeError, OSError):
             pass
     return {"companies": {}, "last_check": None}
@@ -264,7 +266,7 @@ def generate_watchlist_summary() -> dict[str, Any]:
             insider_txns = client.get_insider_transactions(ticker, limit=10)
 
             # Summarize insider activity
-            insider_summary = {"buys": 0, "sells": 0, "buy_shares": 0, "sell_shares": 0}
+            insider_summary = {"buys": 0, "sells": 0, "buy_shares": 0.0, "sell_shares": 0.0}
             for txn in insider_txns:
                 if txn.transaction_type == "P":
                     insider_summary["buys"] += 1

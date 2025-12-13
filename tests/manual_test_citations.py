@@ -1,6 +1,8 @@
-from datetime import date
-from src.utils.citations import Citation, create_citation_from_filing
 from dataclasses import dataclass
+from datetime import date
+
+from src.utils.citations import Citation, create_citation_from_filing
+
 
 # Mock edgar.Filing for testing
 @dataclass
@@ -22,7 +24,7 @@ def test_citation_class():
     )
     print(f"String: {cit.to_string()}")
     print(f"Dict: {cit.to_dict()}")
-    
+
     expected_str = "[AAPL 10-K 2024, Item 8, Page 45]"
     if cit.to_string() == expected_str:
         print("PASS: String format matches")
@@ -38,10 +40,10 @@ def test_create_from_filing():
         url="http://sec.gov/fake",
         ticker="MSFT"
     )
-    
+
     cit = create_citation_from_filing(mock_filing, section="Item 2")
     print(f"Generated: {cit.to_string()}")
-    
+
     if "MSFT 10-Q 2023" in cit.to_string() and "Item 2" in cit.to_string():
         print("PASS: Factory creation successful")
     else:

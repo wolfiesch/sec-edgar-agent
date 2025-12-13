@@ -1,5 +1,7 @@
-from src.parsers.table_parser import TableParser
 import sys
+
+from src.parsers.table_parser import TableParser
+
 
 def test_parser(ticker="AAPL", table="balance_sheet"):
     print(f"Testing {table} for {ticker}...")

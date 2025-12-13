@@ -6,8 +6,7 @@ from typing import Any
 
 import chromadb
 import structlog
-from chromadb.config import Settings
-
+from chromadb.config import Settings as ChromaSettings
 from src.config import settings
 
 logger = structlog.get_logger()
@@ -21,13 +20,14 @@ class FilingVectorStore:
     """
 
     def __init__(self, persist_dir: Path | None = None):
+        """Initialize the persistent Chroma collection and embeddings."""
         self.persist_dir = persist_dir or settings.chroma_persist_dir
         self.persist_dir.mkdir(parents=True, exist_ok=True)
 
         # Initialize ChromaDB
         self.client = chromadb.PersistentClient(
             path=str(self.persist_dir),
-            settings=Settings(
+            settings=ChromaSettings(
                 anonymized_telemetry=False,
             ),
         )
@@ -36,8 +36,9 @@ class FilingVectorStore:
         from chromadb.utils import embedding_functions
 
         # Use OpenAI if key is present, otherwise default (good for local dev/demo without costs)
+        # Use OpenAI embedding function
         if settings.openai_api_key:
-            self.embedding_fn = embedding_functions.OpenAIEmbeddingFunction(
+            self.embedding_fn: Any = embedding_functions.OpenAIEmbeddingFunction(
                 api_key=settings.openai_api_key,
                 model_name="text-embedding-3-small"
             )
@@ -98,7 +99,7 @@ class FilingVectorStore:
             self.collection.upsert(
                 ids=ids,
                 documents=documents,
-                metadatas=metadatas,
+                metadatas=metadatas,  # type: ignore
             )
 
         logger.debug(
@@ -129,8 +130,9 @@ class FilingVectorStore:
             List of matching documents with metadata
         """
         # Build where filter
-        where_filter = {}
-        conditions = []
+        # Build where filter
+        where_filter: dict[str, Any] | None = {}
+        conditions: list[dict[str, str]] = []
 
         if ticker:
             conditions.append({"ticker": ticker.upper()})
@@ -147,7 +149,7 @@ class FilingVectorStore:
         results = self.collection.query(
             query_texts=[query],
             n_results=limit,
-            where=where_filter,
+            where=where_filter,  # type: ignore
         )
 
         # Format results
@@ -181,7 +183,7 @@ class FilingVectorStore:
         results = self.collection.query(
             query_texts=[query_text],
             n_results=limit,
-            where=where_filter,
+            where=where_filter,  # type: ignore
         )
 
         formatted = []
@@ -236,11 +238,11 @@ class FilingVectorStore:
         # Chroma delete supports where filter directly.
 
         # Check count first for return value
-        results = self.collection.get(where=where_filter)
+        results = self.collection.get(where=where_filter)  # type: ignore
         count = len(results["ids"])
 
         if count > 0:
-            self.collection.delete(where=where_filter)
+            self.collection.delete(where=where_filter)  # type: ignore
             logger.info("Deleted filing chunks", ticker=ticker, count=count)
 
         return count
@@ -277,4 +279,3 @@ def get_vector_store() -> FilingVectorStore:
     if _vector_store is None:
         _vector_store = FilingVectorStore()
     return _vector_store
-

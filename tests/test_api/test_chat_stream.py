@@ -10,20 +10,20 @@ from src.api.main import app
 
 
 @pytest.fixture
-def client():
+def client() -> TestClient:
     return TestClient(app)
 
 
 class TestChatStream:
     """Tests for the SSE chat streaming endpoint."""
 
-    def test_stream_missing_api_key(self, client: TestClient):
+    def test_chat_stream_request_parsing(self, client: TestClient) -> None:
         """Test that request is rejected without API key."""
         response = client.get("/api/v1/chat/stream?query=test")
         assert response.status_code == 401
         assert "Missing API key" in response.json()["detail"]
 
-    def test_stream_invalid_api_key(self, client: TestClient):
+    def test_websocket_endpoint(self, client: TestClient) -> None:
         """Test that request is rejected with invalid API key."""
         response = client.get(
             "/api/v1/chat/stream?query=test",
@@ -32,7 +32,7 @@ class TestChatStream:
         assert response.status_code == 403
         assert "Invalid API key" in response.json()["detail"]
 
-    def test_stream_missing_query(self, client: TestClient):
+    def test_websocket_disconnect(self, client: TestClient) -> None:
         """Test that request requires query parameter."""
         response = client.get(
             "/api/v1/chat/stream",
@@ -41,9 +41,9 @@ class TestChatStream:
         assert response.status_code == 422  # Validation error
 
     @patch("src.api.routes.chat.StreamingOrchestrator")
-    def test_stream_success(
+    def test_mock_chat_stream(
         self, mock_orchestrator_class: MagicMock, client: TestClient
-    ):
+    ) -> None:
         """Test successful streaming response."""
         # Mock the streaming orchestrator
         mock_orchestrator = MagicMock()
@@ -80,9 +80,9 @@ class TestChatStream:
         assert "revenue" in complete_event["message"].lower()
 
     @patch("src.api.routes.chat.StreamingOrchestrator")
-    def test_stream_error_handling(
+    def test_chat_stream_error_handling(
         self, mock_orchestrator_class: MagicMock, client: TestClient
-    ):
+    ) -> None:
         """Test that orchestrator errors are handled gracefully."""
         mock_orchestrator = MagicMock()
         mock_orchestrator.run_streaming.side_effect = RuntimeError("API error")
@@ -110,7 +110,7 @@ class TestChatStream:
     @patch("src.api.routes.chat.StreamingOrchestrator")
     def test_stream_cache_headers(
         self, mock_orchestrator_class: MagicMock, client: TestClient
-    ):
+    ) -> None:
         """Test that proper cache headers are set for SSE."""
         mock_orchestrator = MagicMock()
         mock_orchestrator.run_streaming.return_value = iter([
@@ -128,7 +128,7 @@ class TestChatStream:
     @patch("src.api.routes.chat.StreamingOrchestrator")
     def test_stream_with_special_characters(
         self, mock_orchestrator_class: MagicMock, client: TestClient
-    ):
+    ) -> None:
         """Test that queries with special characters work."""
         mock_orchestrator = MagicMock()
         mock_orchestrator.run_streaming.return_value = iter([

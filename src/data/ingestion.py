@@ -1,6 +1,6 @@
 """Background ingestion workflow for pulling filings into the vector store."""
 import structlog
-from edgar import Company
+from edgar import Company  # type: ignore
 from sqlmodel import Session
 
 from src.data.db import engine
@@ -10,7 +10,7 @@ from src.data.vector_store import get_vector_store
 logger = structlog.get_logger()
 
 
-def ingest_filing(job_id: int):
+def ingest_filing(job_id: str) -> None:
     """Background task to ingest a filing."""
     logger.info("Starting ingestion job", job_id=job_id)
 

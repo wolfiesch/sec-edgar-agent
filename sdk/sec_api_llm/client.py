@@ -1,6 +1,7 @@
 """Client utilities for interacting with the SEC EDGAR Agent API."""
 
 import os
+from typing import Any
 
 import httpx
 
@@ -43,7 +44,7 @@ class SecClient:
             headers["Authorization"] = f"Bearer {self.api_key}"
         return headers
 
-    def _request(self, method: str, path: str, **kwargs):
+    def _request(self, method: str, path: str, **kwargs: Any) -> Any:
         """Make HTTP request with error handling."""
         try:
             response = self._client.request(method, path, **kwargs)
@@ -59,14 +60,14 @@ class SecClient:
         except httpx.RequestError as e:
             raise SecApiError(f"Request failed: {str(e)}")
 
-    def close(self):
+    def close(self) -> None:
         """Close HTTP client."""
         self._client.close()
 
-    def __enter__(self):
+    def __enter__(self) -> "SecClient":
         """Allow usage as a context manager."""
         return self
 
-    def __exit__(self, *args):
+    def __exit__(self, *args: Any) -> None:
         """Close the underlying HTTP client on context exit."""
         self.close()

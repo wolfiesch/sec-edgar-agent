@@ -84,6 +84,7 @@ class BaseAgent(ABC):
         role: AgentRole,
         model: str | None = None,
     ):
+        """Initialize an agent with its role and backing LLM model."""
         self.role = role
         self.model = model or settings.openai_model
         self.client = OpenAI(api_key=settings.openai_api_key)

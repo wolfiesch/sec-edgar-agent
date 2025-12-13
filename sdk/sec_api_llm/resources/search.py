@@ -92,4 +92,7 @@ class SearchResource:
             json=data
         )
 
-        return response.get("results", [])
+        results = response.get("results", [])
+        if isinstance(results, list):
+            return results
+        return []

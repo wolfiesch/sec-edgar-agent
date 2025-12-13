@@ -41,6 +41,7 @@ class ValidatorAgent(BaseAgent):
     """Agent responsible for validating execution results."""
 
     def __init__(self, model: str | None = None):
+        """Create a validator agent responsible for quality checks."""
         super().__init__(AgentRole.VALIDATOR, model)
 
     def run(self, context: AgentContext) -> AgentResponse:
@@ -69,7 +70,7 @@ class ValidatorAgent(BaseAgent):
                 should_continue=validation.get("valid", False),
             )
         except Exception as e:
-            self.logger.error(f"Validation failed: {e}")
+            self.logger.error(f"Validation failed: {str(e)}")
             # Don't block on validation errors
             return AgentResponse(
                 success=True,
@@ -152,7 +153,10 @@ Check if the results correctly and completely answer the user's query.""",
             elif "```" in text:
                 text = text.split("```")[1].split("```")[0]
 
-            return json.loads(text.strip())
+            result = json.loads(text.strip())
+            if isinstance(result, dict):
+                return result
+            return {"valid": False, "confidence": 0.0, "issues": ["Invalid JSON format"], "suggestions": []}
         except json.JSONDecodeError:
             # Default to valid if parsing fails
             return {

@@ -1,3 +1,4 @@
+"""Endpoints for parsing structured tables out of filings."""
 from fastapi import APIRouter, HTTPException
 
 from ...parsers.table_parser import TableParser
@@ -8,7 +9,7 @@ router = APIRouter()
 parser = TableParser()  # Singleton for demo specific context maps
 
 @router.post("/parse", response_model=ParsedTableResponse)
-async def parse_table(request: TableParseRequest):
+async def parse_table(request: TableParseRequest) -> ParsedTableResponse:
     """
     Parse a table from SEC filing with 100% accuracy.
 

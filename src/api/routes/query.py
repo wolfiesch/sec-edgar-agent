@@ -1,3 +1,4 @@
+"""Prototype endpoints for query lifecycle and WebSocket streaming."""
 import asyncio
 import logging
 import uuid
@@ -52,7 +53,7 @@ def serialize_for_json(obj: Any) -> Any:
         return None
 
 @router.post("", response_model=QueryResponse)
-async def start_query(request: QueryRequest):
+async def start_query(request: QueryRequest) -> QueryResponse:
     """
     Start a new query session.
 
@@ -64,7 +65,8 @@ async def start_query(request: QueryRequest):
     return QueryResponse(query_id=query_id, status="started")
 
 @router.websocket("/{query_id}/stream")
-async def websocket_endpoint(websocket: WebSocket, query_id: str):
+async def websocket_endpoint(websocket: WebSocket, query_id: str) -> None:
+    """Stream orchestrator progress over WebSocket for a given query."""
     await websocket.accept()
     logger.info(f"WebSocket connected for query {query_id}")
 

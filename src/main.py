@@ -227,27 +227,30 @@ def run_chat_loop() -> None:
                 continue
 
             # Run the agent with streaming progress
-            console.print()
-            for phase, message, data in orchestrator.run_streaming(user_input):
-                if phase == "planning":
-                    console.print(f"[dim]🔍 {message}[/dim]")
-                elif phase == "planned":
-                    console.print(f"[dim]📋 {message}[/dim]")
-                elif phase == "executing":
-                    console.print(f"[dim]⚙️  {message}[/dim]")
-                elif phase == "task_complete":
-                    console.print(f"[dim]   ✓ {message}[/dim]")
-                elif phase == "validating":
-                    console.print(f"[dim]🔎 {message}[/dim]")
-                elif phase == "synthesizing":
-                    console.print(f"[dim]📝 {message}[/dim]")
-                elif phase == "complete":
-                    console.print()
-                    console.print(Markdown(message))
-                    if data and "elapsed" in data:
-                        console.print(f"\n[dim]Completed in {data['elapsed']:.1f}s[/dim]")
-                elif phase == "error":
-                    console.print(f"\n[red]Error: {message}[/red]")
+            if orchestrator:
+                console.print()
+                for phase, message, data in orchestrator.run_streaming(user_input):
+                    if phase == "planning":
+                        console.print(f"[dim]🔍 {message}[/dim]")
+                    elif phase == "planned":
+                        console.print(f"[dim]📋 {message}[/dim]")
+                    elif phase == "executing":
+                        console.print(f"[dim]⚙️  {message}[/dim]")
+                    elif phase == "task_complete":
+                        console.print(f"[dim]   ✓ {message}[/dim]")
+                    elif phase == "validating":
+                        console.print(f"[dim]🔎 {message}[/dim]")
+                    elif phase == "synthesizing":
+                        console.print(f"[dim]📝 {message}[/dim]")
+                    elif phase == "complete":
+                        console.print()
+                        console.print(Markdown(message))
+                        if data and "elapsed" in data:
+                            console.print(f"\n[dim]Completed in {data['elapsed']:.1f}s[/dim]")
+                    elif phase == "error":
+                        console.print(f"\n[red]Error: {message}[/red]")
+            else:
+                 console.print("[red]Error: Orchestrator not initialized (missing API key)[/red]")
 
         except KeyboardInterrupt:
             console.print("\n[yellow]Use /quit to exit[/yellow]")

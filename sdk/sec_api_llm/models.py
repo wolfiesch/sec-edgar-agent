@@ -1,7 +1,9 @@
 """Pydantic models for the SEC API LLM SDK."""
 
+from collections.abc import Iterator
+from typing import Any
+
 from pydantic import BaseModel
-from typing import Any, Iterator
 
 # --- Search ---
 

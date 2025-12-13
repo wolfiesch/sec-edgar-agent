@@ -7,8 +7,8 @@ from typing import Any
 
 import edgar
 import httpx
-from edgar import Company as EdgarCompany
-from edgar import Filing as EdgarFiling
+from edgar import Company as EdgarCompany  # type: ignore
+from edgar import Filing as EdgarFiling  # type: ignore
 
 from src.config import settings
 from src.data.cache import get_cache
@@ -28,7 +28,7 @@ class EdgarClient:
     Provides a clean interface to SEC EDGAR data.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize client with rate limiting, caching, and SEC identity."""
         self.rate_limiter = get_rate_limiter(settings.sec_rate_limit)
         self.cache = get_cache()

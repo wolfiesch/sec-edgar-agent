@@ -2,12 +2,14 @@
 
 import logging
 import time
+import uuid
 from collections import defaultdict
-from typing import Callable
+from collections.abc import Callable
 
-from fastapi import HTTPException, Request, Security
+from fastapi import HTTPException, Request, Response, Security
+from fastapi.responses import JSONResponse
 from fastapi.security.api_key import APIKeyHeader
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
 from src.api.config import settings
 
@@ -62,10 +64,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
     def __init__(
         self,
-        app,
+        app: Callable,
         requests_per_minute: int = 60,
         requests_per_hour: int = 1000,
     ):
+        """Configure rate limits and tracking structures."""
         super().__init__(app)
         self.requests_per_minute = requests_per_minute
         self.requests_per_hour = requests_per_hour
@@ -74,37 +77,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             lambda: {"minute": [], "hour": []}
         )
 
-    async def dispatch(self, request: Request, call_next: Callable):
-        # Skip rate limiting for health checks
-        if request.url.path in ["/health", "/", "/docs", "/redoc", "/openapi.json"]:
-            return await call_next(request)
-
-        client_ip = self._get_client_ip(request)
+    def check_rate_limit(self, client_ip: str) -> bool:
+        """Check if request is within rate limits and record it."""
         current_time = time.time()
-
-        # Check and update rate limits
-        if not self._check_rate_limit(client_ip, current_time):
-            logger.warning(f"Rate limit exceeded for IP: {client_ip}")
-            raise HTTPException(
-                status_code=429,
-                detail="Rate limit exceeded. Please slow down your requests.",
-                headers={"Retry-After": "60"},
-            )
-
-        response = await call_next(request)
-        return response
-
-    def _get_client_ip(self, request: Request) -> str:
-        """Extract client IP, handling proxies."""
-        # Check X-Forwarded-For header first (for proxied requests)
-        forwarded = request.headers.get("X-Forwarded-For")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
-        # Fall back to direct client IP
-        return request.client.host if request.client else "unknown"
-
-    def _check_rate_limit(self, client_ip: str, current_time: float) -> bool:
-        """Check if request is within rate limits."""
         counts = self.request_counts[client_ip]
 
         # Clean up old entries and count recent requests
@@ -132,31 +107,61 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return True
 
 
+def get_client_ip(request: Request) -> str:
+    """Extract client IP."""
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """Log all API requests for monitoring."""
 
-    async def dispatch(self, request: Request, call_next: Callable):
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        """Process and log the request and response."""
+        request_id = str(uuid.uuid4())
         start_time = time.time()
-
-        # Process request
-        response = await call_next(request)
-
-        # Calculate duration
-        duration_ms = (time.time() - start_time) * 1000
-
-        # Log request details
+        
+        # Log request
+        client_ip = get_client_ip(request)
         logger.info(
-            f"{request.method} {request.url.path} "
-            f"status={response.status_code} "
-            f"duration={duration_ms:.2f}ms "
-            f"client={self._get_client_ip(request)}"
+            "Request started",
+            extra={
+                "request_id": request_id,
+                "method": request.method,
+                "path": request.url.path,
+                "client_ip": client_ip,
+            }
         )
 
-        return response
-
-    def _get_client_ip(self, request: Request) -> str:
-        """Extract client IP."""
-        forwarded = request.headers.get("X-Forwarded-For")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
-        return request.client.host if request.client else "unknown"
+        try:
+            response = await call_next(request)
+            
+            # Log successful response
+            process_time = (time.time() - start_time) * 1000
+            logger.info(
+                "Request completed",
+                extra={
+                    "request_id": request_id,
+                    "status_code": response.status_code,
+                    "process_time_ms": f"{process_time:.2f}",
+                }
+            )
+            
+            # Add request ID to response headers
+            response.headers["X-Request-ID"] = request_id
+            return response
+            
+        except Exception as e:
+            # Log error
+            process_time = (time.time() - start_time) * 1000
+            logger.error(
+                "Request failed",
+                extra={
+                    "request_id": request_id,
+                    "error": str(e),
+                    "process_time_ms": f"{process_time:.2f}",
+                }
+            )
+            raise e

@@ -6,7 +6,7 @@ from src.api.main import app
 
 client = TestClient(app)
 
-def test_parse_table_mocked():
+def test_parse_table_mocked() -> None:
     """Test table parsing with mocked parser."""
     mock_result = MagicMock()
     mock_result.markdown = "| Region | Sales |\n|---|---|"

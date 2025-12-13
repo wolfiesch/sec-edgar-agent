@@ -1,3 +1,4 @@
+"""Company metadata endpoints backed by edgartools client."""
 import structlog
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -9,6 +10,7 @@ router = APIRouter()
 
 
 class CompanyInfo(BaseModel):
+    """Basic metadata returned for a given ticker."""
     ticker: str
     cik: str
     name: str
@@ -17,6 +19,7 @@ class CompanyInfo(BaseModel):
 
 
 class FilingSummary(BaseModel):
+    """Lightweight representation of a filing for listings."""
     accession_number: str
     form_type: str
     filing_date: str
@@ -25,7 +28,7 @@ class FilingSummary(BaseModel):
 
 
 @router.get("/{ticker}", response_model=CompanyInfo)
-async def get_company_info(ticker: str):
+async def get_company_info(ticker: str) -> CompanyInfo:
     """Get basic company information."""
     try:
         client = get_edgar_client()
@@ -59,11 +62,13 @@ async def get_company_info(ticker: str):
 
 
 @router.get("/{ticker}/filings", response_model=list[FilingSummary])
-async def get_company_filings(ticker: str, form_type: str | None = "10-K", limit: int = 10):
+async def get_company_filings(ticker: str, form_type: str | None = "10-K", limit: int = 10) -> list[FilingSummary]:
     """Get recent filings for a company."""
     try:
         client = get_edgar_client()
-        filings = client.get_filings(ticker, form_type=form_type, limit=limit)
+        # Ensure form_type is a string for the client call
+        search_form_type = form_type if form_type is not None else "10-K"
+        filings = client.get_filings(ticker, form_type=search_form_type, limit=limit)
 
         result = []
         for filing in filings:

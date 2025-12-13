@@ -1,3 +1,6 @@
+"""Database engine and session helpers for the API."""
+import os
+from collections.abc import Generator
 from sqlmodel import Session, SQLModel, create_engine
 
 from src.config import settings
@@ -11,12 +14,12 @@ engine = create_engine(
 )
 
 
-def init_db():
+def init_db() -> None:
     """Create tables."""
     SQLModel.metadata.create_all(engine)
 
 
-def get_session():
+def get_session() -> Generator[Session, None, None]:
     """Get database session."""
     with Session(engine) as session:
         yield session

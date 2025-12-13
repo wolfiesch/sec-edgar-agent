@@ -1,8 +1,10 @@
+"""API configuration settings loaded from environment and defaults."""
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    """Configuration for the FastAPI layer and related services."""
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True,

@@ -59,6 +59,7 @@ class PlannerAgent(BaseAgent):
     """Agent responsible for breaking down queries into executable tasks."""
 
     def __init__(self, model: str | None = None):
+        """Create a planner agent with an optional model override."""
         super().__init__(AgentRole.PLANNER, model)
 
     def run(self, context: AgentContext) -> AgentResponse:

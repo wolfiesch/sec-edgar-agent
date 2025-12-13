@@ -9,11 +9,10 @@ Usage:
     python scripts/table_parsing_poc/download_filing.py
 """
 
-import os
 from pathlib import Path
 
 import edgar
-from edgar import Company
+from edgar import Company  # type: ignore
 from rich.console import Console
 from rich.progress import Progress
 

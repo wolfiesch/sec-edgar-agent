@@ -2,10 +2,12 @@
 Demo script for user interviews.
 Shows all Tier 0 capabilities.
 """
-from sec_api_llm import SecClient
 import sys
 
-def main():
+from sec_api_llm import SecClient
+
+
+async def main() -> None:
     print("=" * 60)
     print("  SEC API for LLMs - Demo")
     print("=" * 60)

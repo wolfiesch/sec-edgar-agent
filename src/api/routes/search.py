@@ -1,6 +1,5 @@
 """Search endpoints supporting semantic and full-text queries."""
 from datetime import date
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -46,7 +45,7 @@ class FullTextSearchResponse(BaseModel):
 async def search_filings(
     request: SearchRequest,
     vector_store: FilingVectorStore = Depends(get_vector_store),
-):
+) -> SearchResponse:
     """
     Semantic search across SEC filings.
     """
@@ -95,7 +94,7 @@ async def search_filings(
 
 
 @router.post("/full-text", response_model=FullTextSearchResponse)
-async def full_text_search(request: FullTextSearchRequest):
+async def full_text_search(request: FullTextSearchRequest) -> FullTextSearchResponse:
     """
     Full-text search across ALL SEC filings using SEC's EFTS API.
 

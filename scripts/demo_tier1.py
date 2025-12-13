@@ -1,6 +1,7 @@
-from sec_api_llm import SecClient
-import time
 import os
+import time
+
+from sec_api_llm import SecClient
 
 # Set dummy key if not in env for demo structure
 if not os.getenv("SEC_API_KEY"):

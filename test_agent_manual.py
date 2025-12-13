@@ -4,7 +4,13 @@ Run with: uv run python test_agent_manual.py
 """
 
 import logging
+import os
 import sys
+
+# Add project root to path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from src.agents.orchestrator import Orchestrator
 
 # Set up logging to see what's happening
 logging.basicConfig(
@@ -13,9 +19,9 @@ logging.basicConfig(
     stream=sys.stdout,
 )
 
-from src.agents.orchestrator import Orchestrator
 
-def test_simple_query():
+
+def test_simple_query() -> bool:
     """Test a simple company info query."""
     print("\n" + "=" * 80)
     print("TEST: Simple company info query")
@@ -38,7 +44,7 @@ def test_simple_query():
         return False
 
 
-def test_financial_query():
+def test_financial_query() -> bool:
     """Test a financial data query."""
     print("\n" + "=" * 80)
     print("TEST: Financial data query")
@@ -73,7 +79,7 @@ if __name__ == "__main__":
         print("Please set OPENAI_API_KEY in .env file.")
         sys.exit(1)
 
-    results = []
+    results: list[tuple[str, bool]] = []
 
     # Run tests
     results.append(("Simple Query", test_simple_query()))

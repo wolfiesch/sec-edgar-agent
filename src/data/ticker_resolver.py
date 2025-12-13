@@ -3,7 +3,6 @@
 import logging
 from difflib import SequenceMatcher
 from functools import lru_cache
-from typing import Any
 
 import httpx
 
@@ -139,7 +138,6 @@ COMPANY_TICKERS: dict[str, str] = {
 
     # Retail & Consumer
     "walmart": "WMT",
-    "amazon": "AMZN",
     "costco": "COST",
     "home depot": "HD",
     "the home depot": "HD",
@@ -353,6 +351,7 @@ class TickerResolver:
         if query_upper.isalpha() and 1 <= len(query_upper) <= 5:
             return query_upper
 
+        # If nothing found, return None
         return None
 
     def _fuzzy_match(self, query: str, threshold: float = 0.6) -> str | None:
@@ -414,8 +413,10 @@ class TickerResolver:
                         # Get the first result's ticker
                         first_hit = hits[0].get("_source", {})
                         tickers = first_hit.get("tickers", [])
-                        if tickers:
-                            return tickers[0].upper()
+                        if tickers and isinstance(tickers, list) and len(tickers) > 0:
+                            ticker = tickers[0]
+                            if isinstance(ticker, str):
+                                return ticker.upper()
 
         except Exception as e:
             logger.warning(f"SEC EDGAR search failed: {e}")

@@ -1,3 +1,4 @@
+"""Routes exposing registered tools to API consumers."""
 from fastapi import APIRouter, HTTPException
 
 from src.api.models import (
@@ -11,7 +12,7 @@ from src.tools.registry import registry
 router = APIRouter()
 
 @router.get("", response_model=ToolListResponse)
-async def list_tools():
+async def list_tools() -> ToolListResponse:
     """List all available tools."""
     tools = []
     # registry._tools is a dict of ToolDefinition objects (internal)
@@ -25,7 +26,7 @@ async def list_tools():
     return ToolListResponse(tools=tools)
 
 @router.post("/{tool_name}", response_model=ToolExecutionResponse)
-async def execute_tool(tool_name: str, request: ToolExecutionRequest):
+async def execute_tool(tool_name: str, request: ToolExecutionRequest) -> ToolExecutionResponse:
     """Execute a specific tool."""
     tool = registry.get_tool(tool_name)
     if not tool:

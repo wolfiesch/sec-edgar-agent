@@ -179,4 +179,7 @@ POST /api/v1/search/semantic
 | 12/13/2025 01:16 AM PST | Option B: Verified all table types already implemented |
 | 12/13/2025 01:18 AM PST | Option C: Improved search citation formatting |
 | 12/13/2025 01:19 AM PST (via pst-timestamp) | All options complete, plan marked DONE |
+| 12/13/2025 01:25 AM PST | Frontend updated: SemanticSearch tab, table type dropdown |
+| 12/13/2025 01:30 AM PST | Git pushed to origin/master |
+| 12/13/2025 01:36 AM PST (via pst-timestamp) | Deployed to Fly.io: https://sec-edgar-agent.fly.dev/ |
 

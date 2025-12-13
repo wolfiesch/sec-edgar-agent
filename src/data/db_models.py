@@ -1,3 +1,4 @@
+"""SQLModel ORM models for background processing jobs."""
 from datetime import datetime
 from enum import Enum
 
@@ -5,6 +6,7 @@ from sqlmodel import Field, SQLModel
 
 
 class JobStatus(str, Enum):
+    """States a background ingestion job can be in."""
     PENDING = "PENDING"
     PROCESSING = "PROCESSING"
     DONE = "DONE"

@@ -181,6 +181,7 @@ class TestToolRegistry:
 
         assert result.success is False
         assert result.tool_name == "failing_tool"
+        assert result.error is not None
         assert "Something went wrong" in result.error
         assert result.execution_time_ms >= 0
 
