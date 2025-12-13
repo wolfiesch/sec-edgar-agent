@@ -1,3 +1,4 @@
+"""FastAPI application wiring for the SEC EDGAR Agent."""
 from edgar import set_identity
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,7 +9,7 @@ from src.data.db import init_db
 from .config import settings
 from .exceptions import SecApiError
 from .middleware import RateLimitMiddleware, RequestLoggingMiddleware
-from .routes import chat, filings, health, ingest, search, tables
+from .routes import chat, compare, filings, health, ingest, search, tables
 
 # Configure edgartools identity immediately
 set_identity(settings.SEC_USER_AGENT)
@@ -24,6 +25,7 @@ app = FastAPI(
 
 @app.on_event("startup")
 def on_startup():
+    """Initialize database state on application startup."""
     init_db()
 
 # CORS configuration
@@ -47,6 +49,7 @@ app.add_middleware(RequestLoggingMiddleware)
 # Exception Handler
 @app.exception_handler(SecApiError)
 async def sec_api_exception_handler(request: Request, exc: SecApiError):
+    """Translate SecApiError into an HTTP response."""
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.message},
@@ -59,9 +62,11 @@ app.include_router(tables.router, prefix=f"{settings.API_V1_STR}/tables", tags=[
 app.include_router(search.router, prefix=f"{settings.API_V1_STR}/search", tags=["Search"])
 app.include_router(ingest.router, prefix=f"{settings.API_V1_STR}/ingest", tags=["Ingestion"])
 app.include_router(chat.router, prefix=f"{settings.API_V1_STR}/chat", tags=["Chat"])
+app.include_router(compare.router, prefix=f"{settings.API_V1_STR}/compare", tags=["Compare"])
 
 @app.get("/")
 async def root():
+    """Simple root endpoint advertising docs and version."""
     return {
         "message": settings.PROJECT_NAME,
         "docs": "/docs",

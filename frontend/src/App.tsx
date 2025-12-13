@@ -5,9 +5,12 @@ import { ResponsePanel } from './components/ResponsePanel';
 import { QueryHistory } from './components/QueryHistory';
 import { TableParser } from './components/TableParser';
 import { SemanticSearch } from './components/SemanticSearch';
+import { QuickActions } from './components/QuickActions';
+import { CompareCompanies } from './components/CompareCompanies';
+import { ToastContainer, useToast } from './components/Toast';
 import { useQuery } from './hooks/useQuery';
 import { useQueryHistory } from './hooks/useQueryHistory';
-import { Layout, History as HistoryIcon, Table as TableIcon, MessageSquare, Search } from 'lucide-react';
+import { Layout, History as HistoryIcon, Table as TableIcon, MessageSquare, Search, GitCompare } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 function App() {
@@ -22,8 +25,15 @@ function App() {
   } = useQuery();
 
   const { history, addToHistory, clearHistory } = useQueryHistory();
+  const { toasts, dismissToast, success, error, info } = useToast();
   const [showHistory, setShowHistory] = useState(false);
-  const [activeTab, setActiveTab] = useState<'chat' | 'tables' | 'search'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'tables' | 'search' | 'compare'>('chat');
+
+  const handleToast = (type: 'success' | 'error' | 'info', message: string) => {
+    if (type === 'success') success(message);
+    else if (type === 'error') error(message);
+    else info(message);
+  };
 
   // Auto-save history when queryId is generated
   useEffect(() => {
@@ -91,6 +101,17 @@ function App() {
                         <Search className="w-4 h-4" />
                         Semantic Search
                     </button>
+                    <button
+                        onClick={() => setActiveTab('compare')}
+                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
+                            activeTab === 'compare'
+                                ? 'bg-gray-800 text-white shadow-sm'
+                                : 'text-gray-400 hover:text-gray-200'
+                        }`}
+                    >
+                        <GitCompare className="w-4 h-4" />
+                        Compare
+                    </button>
                 </div>
 
                 <div className="flex items-center gap-4 text-sm">
@@ -125,16 +146,25 @@ function App() {
                     )}
 
                     {/* Search Section */}
-                    <div className="mb-12 text-center space-y-4">
+                    <div className="mb-12 text-center space-y-6">
                         <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-gray-100">
                             Autonomous Financial Research
                         </h2>
-                        <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-8">
+                        <p className="text-lg text-gray-400 max-w-2xl mx-auto">
                             Ask complex questions about public companies. The agent plans, executes tools, and validates results in real-time.
                         </p>
-                        <QueryInput 
-                            onSubmit={handleQuerySubmit} 
-                            isLoading={isProcessing} 
+
+                        {/* Quick Actions - Only show when no result */}
+                        {!hasResult && !isProcessing && (
+                            <QuickActions
+                                onSubmit={handleQuerySubmit}
+                                isLoading={isProcessing}
+                            />
+                        )}
+
+                        <QueryInput
+                            onSubmit={handleQuerySubmit}
+                            isLoading={isProcessing}
                             onReset={reset}
                             hasResult={hasResult}
                         />
@@ -155,17 +185,22 @@ function App() {
                         {/* Right: Response Area */}
                         <div className="lg:col-span-8">
                             <div className="bg-gray-900/50 rounded-xl border border-gray-800 min-h-[600px] h-full"> 
-                                <ResponsePanel content={finalAnswer} isProcessing={isProcessing} />
+                                <ResponsePanel content={finalAnswer} isProcessing={isProcessing} onToast={handleToast} />
                             </div>
                         </div>
                     </div>
                 </>
             ) : activeTab === 'tables' ? (
                 <TableParser />
-            ) : (
+            ) : activeTab === 'search' ? (
                 <SemanticSearch />
+            ) : (
+                <CompareCompanies onToast={handleToast} />
             )}
         </main>
+
+        {/* Toast Notifications */}
+        <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

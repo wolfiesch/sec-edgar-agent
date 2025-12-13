@@ -1,11 +1,13 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { Components } from 'react-markdown';
-import { ExternalLink, FileText, Loader2 } from 'lucide-react';
+import { ExternalLink, FileText, Loader2, Copy, Download, Check } from 'lucide-react';
+import { useState } from 'react';
 
 interface ResponsePanelProps {
   content: string | null;
   isProcessing: boolean;
+  onToast?: (type: 'success' | 'error' | 'info', message: string) => void;
 }
 
 /**
@@ -133,7 +135,46 @@ const markdownComponents: Components = {
   ),
 };
 
-export function ResponsePanel({ content, isProcessing }: ResponsePanelProps) {
+export function ResponsePanel({ content, isProcessing, onToast }: ResponsePanelProps) {
+  const [copiedMarkdown, setCopiedMarkdown] = useState(false);
+
+  const handleCopyMarkdown = async () => {
+    if (!content) return;
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedMarkdown(true);
+      onToast?.('success', 'Copied to clipboard');
+      setTimeout(() => setCopiedMarkdown(false), 2000);
+    } catch {
+      onToast?.('error', 'Failed to copy to clipboard');
+    }
+  };
+
+  const handleDownloadJson = () => {
+    if (!content) return;
+    try {
+      // Extract structured data from the markdown content
+      const jsonData = {
+        content: content,
+        exportedAt: new Date().toISOString(),
+        format: 'markdown',
+        citations: extractCitations(content),
+      };
+      const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `sec-agent-response-${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      onToast?.('success', 'JSON downloaded');
+    } catch {
+      onToast?.('error', 'Failed to download JSON');
+    }
+  };
+
   if (!content) {
     if (isProcessing) {
       return (
@@ -156,13 +197,64 @@ export function ResponsePanel({ content, isProcessing }: ResponsePanelProps) {
   const processedContent = processCitations(content);
 
   return (
-    <div className="p-6 overflow-y-auto max-h-[600px] custom-scrollbar">
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={markdownComponents}
-      >
-        {processedContent}
-      </ReactMarkdown>
+    <div className="relative">
+      {/* Export Buttons */}
+      <div className="absolute top-3 right-3 flex items-center gap-2 z-10">
+        <button
+          onClick={handleCopyMarkdown}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-md text-gray-300 hover:text-white transition-colors"
+          title="Copy as Markdown"
+        >
+          {copiedMarkdown ? (
+            <>
+              <Check className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-emerald-400">Copied!</span>
+            </>
+          ) : (
+            <>
+              <Copy className="w-3.5 h-3.5" />
+              <span>Copy MD</span>
+            </>
+          )}
+        </button>
+        <button
+          onClick={handleDownloadJson}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-md text-gray-300 hover:text-white transition-colors"
+          title="Download as JSON"
+        >
+          <Download className="w-3.5 h-3.5" />
+          <span>JSON</span>
+        </button>
+      </div>
+
+      <div className="p-6 pt-12 overflow-y-auto max-h-[600px] custom-scrollbar">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={markdownComponents}
+        >
+          {processedContent}
+        </ReactMarkdown>
+      </div>
     </div>
   );
+}
+
+/**
+ * Extract citations from content for JSON export
+ */
+function extractCitations(text: string): Array<{ ticker: string; form: string; year: string; section?: string }> {
+  const citationPattern = /\[([A-Z]{1,5})\s+(10-[KQ]|8-K|Form\s*4)\s+(\d{4})(?:,\s*([^\]]+))?\]/g;
+  const citations: Array<{ ticker: string; form: string; year: string; section?: string }> = [];
+  let match;
+
+  while ((match = citationPattern.exec(text)) !== null) {
+    citations.push({
+      ticker: match[1],
+      form: match[2],
+      year: match[3],
+      section: match[4] || undefined,
+    });
+  }
+
+  return citations;
 }
