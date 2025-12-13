@@ -106,6 +106,18 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         return True
 
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        """Check rate limit and process request."""
+        client_ip = get_client_ip(request)
+
+        if not self.check_rate_limit(client_ip):
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "Rate limit exceeded. Please try again later."},
+            )
+
+        return await call_next(request)
+
 
 def get_client_ip(request: Request) -> str:
     """Extract client IP."""
