@@ -18,7 +18,7 @@ def format_source(doc) -> str:
     return f"[{ticker} {section}]"
 
 
-@router.post("/", response_model=ChatResponse)
+@router.post("", response_model=ChatResponse)
 async def chat(
     request: ChatRequest,
     vector_store: FilingVectorStore = Depends(get_vector_store),
