@@ -275,9 +275,13 @@ class TestGetFinancials:
         mock_filing.filing_date = date(2023, 10, 27)
 
         mock_financials = MagicMock()
-        mock_income_stmt = MagicMock()
-        mock_income_stmt.to_dict.return_value = {"revenue": 383000000000, "net_income": 97000000000}
-        mock_financials.income_statement = mock_income_stmt
+        # Implementation uses get_financial_metrics() to get data
+        mock_financials.get_financial_metrics.return_value = {
+            "revenue": 383000000000,
+            "net_income": 97000000000
+        }
+        # Mock income_statement() method to avoid errors in detailed data extraction
+        mock_financials.income_statement.return_value = None
 
         mock_tenk = MagicMock()
         mock_tenk.financials = mock_financials
@@ -306,9 +310,13 @@ class TestGetFinancials:
         mock_filing.filing_date = date(2023, 10, 27)
 
         mock_financials = MagicMock()
-        mock_balance_sheet = MagicMock()
-        mock_balance_sheet.to_dict.return_value = {"total_assets": 352000000000}
-        mock_financials.balance_sheet = mock_balance_sheet
+        # Implementation uses get_financial_metrics() to get data
+        mock_financials.get_financial_metrics.return_value = {
+            "total_assets": 352000000000,
+            "total_liabilities": 200000000000
+        }
+        # Mock balance_sheet() method to avoid errors in detailed data extraction
+        mock_financials.balance_sheet.return_value = None
 
         mock_tenk = MagicMock()
         mock_tenk.financials = mock_financials
@@ -492,12 +500,54 @@ class TestSearchFilings:
     """Tests for search_filings method."""
 
     @patch("src.data.edgar_client.edgar.set_identity")
-    def test_search_filings_not_implemented(self, mock_identity: Mock) -> None:
-        """Test that search_filings returns empty list (not implemented)."""
-        client = EdgarClient()
-        results = client.search_filings("revenue growth")
+    @patch("httpx.Client")
+    def test_search_filings_returns_results(self, mock_httpx_client: Mock, mock_identity: Mock) -> None:
+        """Test that search_filings returns results from EFTS search."""
+        # Mock the EFTS API response
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {
+            "hits": {
+                "total": {"value": 2},
+                "hits": [
+                    {
+                        "_id": "0000320193-23-000106",
+                        "_source": {
+                            "adsh": "000032019323000106",
+                            "ciks": ["320193"],
+                            "display_names": ["Apple Inc.  (AAPL)  (CIK 0000320193)"],
+                            "file_date": "2023-10-27",
+                            "period_ending": "2023-09-30",
+                            "form": "10-K",
+                        }
+                    },
+                    {
+                        "_id": "0000320193-23-000095",
+                        "_source": {
+                            "adsh": "000032019323000095",
+                            "ciks": ["320193"],
+                            "display_names": ["Apple Inc.  (AAPL)  (CIK 0000320193)"],
+                            "file_date": "2023-08-04",
+                            "period_ending": "2023-07-01",
+                            "form": "10-Q",
+                        }
+                    }
+                ]
+            }
+        }
 
-        assert results == []
+        # Configure the mock client context manager
+        mock_client_instance = MagicMock()
+        mock_client_instance.get.return_value = mock_response
+        mock_httpx_client.return_value.__enter__ = MagicMock(return_value=mock_client_instance)
+        mock_httpx_client.return_value.__exit__ = MagicMock(return_value=False)
+
+        client = EdgarClient()
+        results = client.search_filings("revenue growth", limit=10)
+
+        assert len(results) == 2
+        assert results[0].form_type == "10-K"
+        assert results[1].form_type == "10-Q"
 
 
 class TestGetEdgarClient:

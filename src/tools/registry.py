@@ -4,16 +4,16 @@ Provides a decorator-based system for registering tools that can be
 used by the Claude API's tool_use feature.
 """
 
-import logging
 import time
 from collections.abc import Callable
 from typing import Any, ParamSpec, TypeVar
 
+import structlog
 from pydantic import BaseModel
 
 from src.data.models import Citation, ToolResult
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -143,6 +143,15 @@ class ToolRegistry:
             )
 
         start_time = time.monotonic()
+
+        # Log tool execution start with key arguments (sanitized for logging)
+        log_args = {k: str(v)[:50] for k, v in arguments.items() if k != "content"}
+        logger.info(
+            "Tool execution started",
+            tool=name,
+            arguments=log_args,
+        )
+
         try:
             result = tool.function(**arguments)
             execution_time = int((time.monotonic() - start_time) * 1000)
@@ -151,6 +160,14 @@ class ToolRegistry:
             citations: list[Citation] = []
             if isinstance(result, dict) and "citations" in result:
                 citations = result.pop("citations", [])
+
+            logger.info(
+                "Tool execution completed",
+                tool=name,
+                success=True,
+                execution_time_ms=execution_time,
+                citation_count=len(citations),
+            )
 
             return ToolResult(
                 tool_name=name,
@@ -163,7 +180,13 @@ class ToolRegistry:
 
         except Exception as e:
             execution_time = int((time.monotonic() - start_time) * 1000)
-            logger.exception(f"Tool {name} failed: {e}")
+            logger.exception(
+                "Tool execution failed",
+                tool=name,
+                error=str(e),
+                error_type=type(e).__name__,
+                execution_time_ms=execution_time,
+            )
             return ToolResult(
                 tool_name=name,
                 success=False,

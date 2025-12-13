@@ -1,8 +1,9 @@
 """Orchestrator for coordinating the multi-agent workflow."""
 
-import logging
 import time
 from typing import Any
+
+import structlog
 
 from src.agents.base import AgentContext, Plan
 from src.agents.executor import ExecutorAgent
@@ -11,7 +12,7 @@ from src.agents.synthesizer import SynthesizerAgent
 from src.agents.validator import ValidatorAgent
 from src.config import settings
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
 class Orchestrator:
@@ -32,7 +33,7 @@ class Orchestrator:
         self.validator = ValidatorAgent(model)
         self.synthesizer = SynthesizerAgent(model)
         self.max_steps = settings.max_agent_steps
-        self.logger = logging.getLogger(__name__)
+        self.logger = structlog.get_logger()
 
     def run(self, query: str) -> str:
         """
@@ -45,7 +46,13 @@ class Orchestrator:
             Synthesized response string
         """
         start_time = time.time()
-        self.logger.info(f"Starting orchestration for: {query}")
+        query_preview = query[:80] + "..." if len(query) > 80 else query
+        self.logger.info(
+            "Orchestration started",
+            query=query_preview,
+            query_length=len(query),
+            max_steps=self.max_steps,
+        )
 
         # Initialize context
         context = AgentContext(
@@ -58,16 +65,34 @@ class Orchestrator:
 
         try:
             # Step 1: Planning
-            self.logger.info("Phase 1: Planning")
+            phase_start = time.time()
+            self.logger.info("Phase 1: Planning started")
             plan_response = self.planner.run(context)
+            phase_elapsed = time.time() - phase_start
+
             if not plan_response.success:
+                self.logger.error(
+                    "Planning failed",
+                    error=plan_response.error,
+                    elapsed_seconds=round(phase_elapsed, 2),
+                )
                 return f"Failed to create plan: {plan_response.error}"
+
+            task_count = len(context.plan.tasks) if context.plan else 0
+            is_simple = context.plan.is_simple if context.plan else True
+            self.logger.info(
+                "Phase 1: Planning completed",
+                task_count=task_count,
+                is_simple=is_simple,
+                elapsed_seconds=round(phase_elapsed, 2),
+            )
 
             # Validation retry loop
             while retries < max_retries:
                 # Step 2: Execution
+                phase_start = time.time()
                 attempt_msg = f" (attempt {retries + 1}/{max_retries})" if retries > 0 else ""
-                self.logger.info(f"Phase 2: Execution{attempt_msg}")
+                self.logger.info(f"Phase 2: Execution started{attempt_msg}")
 
                 while context.step_count < context.max_steps:
                     exec_response = self.executor.run(context)
@@ -76,14 +101,30 @@ class Orchestrator:
                         break
 
                     if not exec_response.success:
-                        self.logger.warning(f"Execution step failed: {exec_response.error}")
+                        self.logger.warning(
+                            "Execution step failed",
+                            error=exec_response.error,
+                            step=context.step_count,
+                        )
                         # Continue with other tasks if possible
                         continue
 
+                exec_elapsed = time.time() - phase_start
+                completed_tasks = sum(1 for t in context.plan.tasks if t.status.value == "completed") if context.plan else 0
+                self.logger.info(
+                    "Phase 2: Execution completed",
+                    completed_tasks=completed_tasks,
+                    total_tasks=task_count,
+                    steps_used=context.step_count,
+                    elapsed_seconds=round(exec_elapsed, 2),
+                )
+
                 # Step 3: Validation (skip for simple queries)
                 if context.plan and not context.plan.is_simple:
-                    self.logger.info(f"Phase 3: Validation{attempt_msg}")
+                    val_phase_start = time.time()
+                    self.logger.info(f"Phase 3: Validation started{attempt_msg}")
                     val_response = self.validator.run(context)
+                    val_elapsed = time.time() - val_phase_start
 
                     if val_response.content and not val_response.content.get("valid", True):
                         issues = val_response.content.get("issues", [])
@@ -91,8 +132,12 @@ class Orchestrator:
                         confidence = val_response.content.get("confidence", 0.0)
 
                         self.logger.warning(
-                            f"Validation failed (attempt {retries + 1}/{max_retries}): "
-                            f"confidence={confidence:.2f}, issues={issues}"
+                            "Validation failed",
+                            attempt=retries + 1,
+                            max_retries=max_retries,
+                            confidence=round(confidence, 2),
+                            issues=issues,
+                            elapsed_seconds=round(val_elapsed, 2),
                         )
 
                         # Add correction tasks and retry
@@ -102,16 +147,29 @@ class Orchestrator:
                             continue
                         else:
                             self.logger.warning("Max retries reached, proceeding with current results")
+                    else:
+                        self.logger.info(
+                            "Phase 3: Validation passed",
+                            elapsed_seconds=round(val_elapsed, 2),
+                        )
 
                 # Validation passed or not needed
                 break
 
             # Step 4: Synthesis
-            self.logger.info("Phase 4: Synthesis")
+            synth_start = time.time()
+            self.logger.info("Phase 4: Synthesis started")
             synth_response = self.synthesizer.run(context)
+            synth_elapsed = time.time() - synth_start
 
             elapsed = time.time() - start_time
-            self.logger.info(f"Orchestration complete in {elapsed:.2f}s")
+            self.logger.info(
+                "Orchestration completed",
+                total_elapsed_seconds=round(elapsed, 2),
+                synthesis_elapsed_seconds=round(synth_elapsed, 2),
+                tool_results_count=len(context.tool_results),
+                citations_count=len(context.citations),
+            )
 
             if synth_response.success:
                 return str(synth_response.content)
@@ -119,7 +177,13 @@ class Orchestrator:
                 return f"Failed to synthesize response: {synth_response.error}"
 
         except Exception as e:
-            self.logger.exception(f"Orchestration failed: {e}")
+            elapsed = time.time() - start_time
+            self.logger.exception(
+                "Orchestration failed",
+                error=str(e),
+                error_type=type(e).__name__,
+                elapsed_seconds=round(elapsed, 2),
+            )
             return f"An error occurred while processing your query: {str(e)}"
 
     def run_simple(self, tool_name: str, args: dict[str, Any]) -> dict[str, Any]:
