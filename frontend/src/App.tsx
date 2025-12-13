@@ -4,9 +4,10 @@ import { WorkflowTimeline } from './components/WorkflowTimeline';
 import { ResponsePanel } from './components/ResponsePanel';
 import { QueryHistory } from './components/QueryHistory';
 import { TableParser } from './components/TableParser';
+import { SemanticSearch } from './components/SemanticSearch';
 import { useQuery } from './hooks/useQuery';
 import { useQueryHistory } from './hooks/useQueryHistory';
-import { Layout, History as HistoryIcon, Table as TableIcon, MessageSquare } from 'lucide-react';
+import { Layout, History as HistoryIcon, Table as TableIcon, MessageSquare, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 function App() {
@@ -22,7 +23,7 @@ function App() {
 
   const { history, addToHistory, clearHistory } = useQueryHistory();
   const [showHistory, setShowHistory] = useState(false);
-  const [activeTab, setActiveTab] = useState<'chat' | 'tables'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'tables' | 'search'>('chat');
 
   // Auto-save history when queryId is generated
   useEffect(() => {
@@ -71,13 +72,24 @@ function App() {
                     <button
                         onClick={() => setActiveTab('tables')}
                         className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
-                            activeTab === 'tables' 
-                                ? 'bg-gray-800 text-white shadow-sm' 
+                            activeTab === 'tables'
+                                ? 'bg-gray-800 text-white shadow-sm'
                                 : 'text-gray-400 hover:text-gray-200'
                         }`}
                     >
                         <TableIcon className="w-4 h-4" />
                         Table Parser
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('search')}
+                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
+                            activeTab === 'search'
+                                ? 'bg-gray-800 text-white shadow-sm'
+                                : 'text-gray-400 hover:text-gray-200'
+                        }`}
+                    >
+                        <Search className="w-4 h-4" />
+                        Semantic Search
                     </button>
                 </div>
 
@@ -148,8 +160,10 @@ function App() {
                         </div>
                     </div>
                 </>
-            ) : (
+            ) : activeTab === 'tables' ? (
                 <TableParser />
+            ) : (
+                <SemanticSearch />
             )}
         </main>
     </div>

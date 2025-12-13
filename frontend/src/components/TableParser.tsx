@@ -10,7 +10,14 @@ export function TableParser() {
   const [ticker, setTicker] = useState('AAPL');
   const [formType, setFormType] = useState('10-K');
   const [year, setYear] = useState('2024');
-  const [tableName, setTableName] = useState('segment_information');
+  const [tableName, setTableName] = useState('income_statement');
+
+  const tableTypes = [
+    { value: 'income_statement', label: 'Income Statement' },
+    { value: 'balance_sheet', label: 'Balance Sheet' },
+    { value: 'cash_flow', label: 'Cash Flow Statement' },
+    { value: 'segment_information', label: 'Segment Information' },
+  ];
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ParsedTableResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +57,7 @@ export function TableParser() {
 
       {/* Input Form */}
       <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-6 backdrop-blur-sm">
-        <form onSubmit={handleParse} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+        <form onSubmit={handleParse} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-300">Ticker</label>
             <input
@@ -82,15 +89,17 @@ export function TableParser() {
               className="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
             />
           </div>
-          <div className="md:col-span-2 space-y-2">
-            <label className="text-sm font-medium text-gray-300">Table Name</label>
-            <input
-              type="text"
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-300">Table Type</label>
+            <select
               value={tableName}
               onChange={(e) => setTableName(e.target.value)}
               className="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-              placeholder="segment_information"
-            />
+            >
+              {tableTypes.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
           </div>
           <button
             type="submit"
