@@ -19,6 +19,7 @@ app = FastAPI(
     version=settings.VERSION,
     docs_url="/docs",
     redoc_url="/redoc",
+    redirect_slashes=False,  # Prevent 307 redirects that lose POST body
 )
 
 @app.on_event("startup")
