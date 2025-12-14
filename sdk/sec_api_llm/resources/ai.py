@@ -1,12 +1,14 @@
 """AI-related resources (search, chat, ingest) for the SDK."""
 
+from typing import Any
+
 from .models import ChatMessage, ChatResponse, SearchResponse
 
 
 class SearchResource:
     """Wrapper around semantic search endpoints."""
 
-    def __init__(self, client):
+    def __init__(self, client: Any):
         """Store reference to the shared API client."""
         self._client = client
 
@@ -24,11 +26,11 @@ class SearchResource:
 class ChatResource:
     """Resource for conversational access to filings."""
 
-    def __init__(self, client):
+    def __init__(self, client: Any):
         """Store reference to the shared API client."""
         self._client = client
 
-    def create(self, messages: list[dict | ChatMessage], ticker: str | None = None) -> ChatResponse:
+    def create(self, messages: list[dict[str, Any] | ChatMessage], ticker: str | None = None) -> ChatResponse:
         """Chat with the SEC data."""
         # Convert dicts to ChatMessage if needed
         msgs = []
@@ -48,19 +50,21 @@ class ChatResource:
 class IngestResource:
     """Resource for ingestion jobs."""
 
-    def __init__(self, client):
+    def __init__(self, client: Any):
         """Store reference to the shared API client."""
         self._client = client
 
-    def trigger(self, ticker: str, form_type: str, year: int) -> dict:
+    def trigger(self, ticker: str, form_type: str, year: int) -> dict[str, Any]:
         """Trigger ingestion job."""
         payload = {
             "ticker": ticker,
             "form_type": form_type,
             "year": year
         }
-        return self._client._post("ingest", json=payload)
+        # Cast to expect dict return from _post
+        return dict(self._client._post("ingest", json=payload))
 
-    def get(self, job_id: int) -> dict:
+    def get(self, job_id: int) -> dict[str, Any]:
         """Get job status."""
-        return self._client._get(f"ingest/{job_id}")
+        # Cast to expect dict return from _get
+        return dict(self._client._get(f"ingest/{job_id}"))

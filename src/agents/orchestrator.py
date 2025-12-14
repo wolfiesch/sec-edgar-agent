@@ -35,6 +35,8 @@ SIMPLE_QUERY_PATTERNS = [
     (r"(?:what\s+(?:is|was|were)\s+)?(\w+)(?:'s)?\s+(?:cash|cash\s+and\s+equivalents)", "get_balance_sheet"),
     # Cash flow
     (r"(?:what\s+(?:is|was|were)\s+)?(\w+)(?:'s)?\s+(?:operating\s+)?cash\s+flow", "get_cash_flow"),
+    # Ticker lookup / company identifier
+    (r"(?:what\s+(?:is|was|were)\s+)?(\w+)(?:'s)?\s+(?:ticker\s+symbol|ticker)\b", "get_company_info"),
     # Company info
     (r"(?:tell\s+me\s+about|what\s+is|info\s+(?:on|about)|company\s+info)\s+(\w+)", "get_company_info"),
 ]
@@ -207,7 +209,7 @@ class Orchestrator:
                 )
 
             task_count = len(context.plan.tasks) if context.plan else 0
-            is_simple = context.plan.is_simple if context.plan else True
+            task_count = len(context.plan.tasks) if context.plan else 0
 
             # Validation retry loop
             while retries < max_retries:
@@ -422,7 +424,7 @@ class StreamingOrchestrator(Orchestrator):
                     # Find the next task to execute
                     if not context.plan:
                         break
-                        
+
                     next_task = None
                     for task in context.plan.tasks:
                         if task.status.value in ["pending", "in_progress"]:

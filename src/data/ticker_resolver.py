@@ -382,8 +382,9 @@ class TickerResolver:
 
         return best_match
 
+    @staticmethod
     @lru_cache(maxsize=500)
-    def _search_sec_edgar(self, query: str) -> str | None:
+    def _search_sec_edgar(query: str) -> str | None:
         """
         Search SEC EDGAR company search API.
 

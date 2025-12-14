@@ -1,7 +1,8 @@
 """Routes for triggering and monitoring ingestion jobs."""
 from typing import Any
+
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from sqlmodel import Session # type: ignore
+from sqlmodel import Session  # type: ignore
 
 from src.api.middleware import verify_api_key
 from src.api.models.requests import IngestRequest

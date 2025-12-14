@@ -1,13 +1,15 @@
 """Endpoints for retrieving filing metadata and available sections."""
 from typing import Any
+
 from edgar import Company
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlmodel import Session
 
 from src.api.dependencies import get_db
-from src.tools.analysis import detect_risk_changes
 from src.api.exceptions import FilingNotFound, SecApiError
+from src.tools.analysis import detect_risk_changes
+
 from ..models.responses import FilingResponse
 
 router = APIRouter()
@@ -42,10 +44,7 @@ async def get_filing(
             filings = [f for f in filings if f.filing_date.year == year]
 
         if not filings:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No {form_type} filings found for {ticker}",
-            )
+            raise FilingNotFound(ticker=ticker, form_type=form_type, year=year)
 
         filing = filings[0]  # Latest
 

@@ -1,4 +1,8 @@
 """API configuration settings loaded from environment and defaults."""
+import logging
+import sys
+
+import structlog
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -48,3 +52,39 @@ class Settings(BaseSettings):
     )
 
 settings = Settings()
+
+
+def configure_logging() -> None:
+    """Configure structured logging with structlog."""
+    shared_processors = [
+        structlog.contextvars.merge_contextvars,
+        structlog.processors.add_log_level,
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+    ]
+
+    if settings.DEBUG:
+        processors = shared_processors + [
+            structlog.dev.ConsoleRenderer(),
+        ]
+    else:
+        processors = shared_processors + [
+            structlog.processors.dict_tracebacks,
+            structlog.processors.JSONRenderer(),
+        ]
+
+    structlog.configure(
+        processors=processors,
+        logger_factory=structlog.PrintLoggerFactory(),
+        wrapper_class=structlog.make_filtering_bound_logger(logging.INFO),
+        cache_logger_on_first_use=True,
+    )
+
+    #Redirect standard logging to structlog
+    logging.basicConfig(format="%(message)s", stream=sys.stdout, level=logging.INFO)
+
+    # Silence noisy libraries
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+    logging.getLogger("httpx").setLevel(logging.WARNING)

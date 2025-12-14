@@ -134,7 +134,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         """Process and log the request and response."""
         request_id = str(uuid.uuid4())
         start_time = time.time()
-        
+
         # Log request
         client_ip = get_client_ip(request)
         logger.info(
@@ -149,7 +149,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
         try:
             response = await call_next(request)
-            
+
             # Log successful response
             process_time = (time.time() - start_time) * 1000
             logger.info(
@@ -160,11 +160,11 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                     "process_time_ms": f"{process_time:.2f}",
                 }
             )
-            
+
             # Add request ID to response headers
             response.headers["X-Request-ID"] = request_id
             return response
-            
+
         except Exception as e:
             # Log error
             process_time = (time.time() - start_time) * 1000

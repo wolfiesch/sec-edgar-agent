@@ -38,30 +38,12 @@ class TestOrchestratorIntegration:
     @patch("src.agents.base.BaseAgent._call_llm")
     def test_simple_query_workflow(self, mock_call_llm: MagicMock) -> None:
         """Test orchestrator with a simple query."""
-        # Mock planner response
-        plan_json = """{
-            "reasoning": "Simple company info lookup",
-            "is_simple": true,
-            "tasks": [
-                {
-                    "id": "task_1",
-                    "description": "Get Apple company information",
-                    "tool_hint": "get_company_info",
-                    "dependencies": []
-                }
-            ]
-        }"""
+
 
         # Mock synthesizer response
         synthesis = "Apple Inc. (AAPL) is a technology company with CIK 0000320193."
 
         mock_call_llm.side_effect = [
-            {  # Planner
-                "content": plan_json,
-                "tool_calls": None,
-                "finish_reason": "stop",
-                "usage": {"input_tokens": 100, "output_tokens": 50},
-            },
             {  # Executor with tool call
                 "content": None,
                 "tool_calls": [create_tool_call("call_1", "get_company_info", {"ticker": "AAPL"})],
@@ -93,8 +75,8 @@ class TestOrchestratorIntegration:
 
             assert isinstance(result, str)
             assert len(result) > 0
-            # Planner, Executor, Synthesizer should be called (no validation for simple)
-            assert mock_call_llm.call_count == 3
+            # Executor, Synthesizer should be called (no planner/validation for simple)
+            assert mock_call_llm.call_count == 2
 
     @patch("src.agents.base.BaseAgent._call_llm")
     def test_complex_query_workflow(self, mock_call_llm: MagicMock) -> None:
@@ -163,7 +145,7 @@ class TestOrchestratorIntegration:
                 ),
             ]
 
-            result = orchestrator.run("What is Apple's revenue growth over 3 years?")
+            result = orchestrator.run("Analyze the trend of Apple's revenue growth over 3 years?")
 
             assert isinstance(result, str)
             # Should call planner, executor (2x), validator, synthesizer
@@ -384,7 +366,7 @@ class TestOrchestratorErrorHandling:
                 ),
             ]
 
-            result = orchestrator.run("What is Apple's revenue?")
+            result = orchestrator.run("Analyze Apple's revenue?")
 
             assert isinstance(result, str)
             # Should call: planner, executor (2x for retry), validator (2x), synthesizer

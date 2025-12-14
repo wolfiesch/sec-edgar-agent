@@ -87,17 +87,17 @@ def analyze_historical_trends(
         for i in range(1, len(data_points)):
             prev_val = data_points[i - 1].get("value", 0)
             curr_val = data_points[i].get("value", 0)
-            
+
         try:
             prev_float = float(str(prev_val)) if prev_val is not None else 0.0
             curr_float = float(str(curr_val)) if curr_val is not None else 0.0
-            
+
             prev = prev_float
             curr = curr_float
         except (ValueError, TypeError):
             prev = 0.0
             curr = 0.0
-                
+
             if prev != 0:
                 change_pct: float | None = ((curr - prev) / abs(prev)) * 100
             else:
@@ -108,14 +108,14 @@ def analyze_historical_trends(
         # Calculate CAGR (Compound Annual Growth Rate)
         first_val = data_points[0].get("value", 0)
         last_val = data_points[-1].get("value", 0)
-        
+
         try:
             first_val = float(str(first_val)) if first_val is not None else 0.0
             last_val = float(str(last_val)) if last_val is not None else 0.0
         except (ValueError, TypeError):
             first_val = 0.0
             last_val = 0.0
-            
+
         num_years = len(data_points) - 1
 
         if first_val > 0 and last_val > 0 and num_years > 0:

@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 
 from src.data.db import init_db
 
-from .config import settings
+from .config import configure_logging, settings
 from .exceptions import SecApiError
 from .middleware import RateLimitMiddleware, RequestLoggingMiddleware
 from .routes import chat, compare, filings, health, ingest, search, tables
@@ -20,6 +20,7 @@ set_identity(settings.SEC_USER_AGENT)
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> Any:
     """Initialize application state."""
+    configure_logging()
     init_db()
     yield
 

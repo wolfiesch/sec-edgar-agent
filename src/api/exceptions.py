@@ -16,7 +16,7 @@ class TableNotFound(SecApiError):
 
 class FilingNotFound(SecApiError):
     """Raised when a requested filing cannot be found."""
-    def __init__(self, ticker: str, form_type: str, year: int = None):
+    def __init__(self, ticker: str, form_type: str, year: int | None = None):
         """Construct a message describing which filing is missing."""
         msg = f"No {form_type} filing found for {ticker}"
         if year:

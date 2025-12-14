@@ -1,5 +1,11 @@
 """Pydantic models exposed by the FastAPI layer."""
-from .requests import ChatMessage, ChatRequest, ChatResponse, QueryRequest, QueryResponse
+from .requests import (
+    ChatMessage,
+    ChatRequest,
+    ChatResponse,
+    QueryRequest,
+    QueryResponse,
+)
 from .tools import (
     ToolDefinition,
     ToolExecutionRequest,

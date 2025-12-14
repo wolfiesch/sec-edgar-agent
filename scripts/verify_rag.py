@@ -1,6 +1,7 @@
 import shutil
 
-from sqlmodel import Session, select, func, col, SQLModel, create_engine # type: ignore
+from sqlmodel import Session, select  # type: ignore
+
 from src.config import settings
 from src.data.db import engine, init_db
 from src.data.db_models import JobStatus, ProcessingJob

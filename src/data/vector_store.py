@@ -7,6 +7,7 @@ from typing import Any
 import chromadb
 import structlog
 from chromadb.config import Settings as ChromaSettings
+
 from src.config import settings
 
 logger = structlog.get_logger()

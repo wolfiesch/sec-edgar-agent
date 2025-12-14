@@ -56,7 +56,7 @@ def parse_inline_xbrl_table(html_file: Path) -> TableData:
     console.print(f"[cyan]Found {len(xbrl_tags)} inline XBRL tags[/cyan]")
 
     # Extract data
-    
+
     # Get table structure from HTML
     table = soup.find("table")
     if not table:
@@ -99,14 +99,14 @@ def parse_inline_xbrl_table(html_file: Path) -> TableData:
         # Check various XBRL attributes
         context_ref = get_attr(tag, "contextref")
         name = get_attr(tag, "name")
-        
+
         # Check if it's a monetary item
         if "MonetaryItemType" in name or "SharesItemType" in name:
             # This return statement would cause the function to exit prematurely
             # and return a boolean, which is not the expected TableData type.
             # Assuming this is a placeholder or intended for a different context.
             pass # Keeping the code syntactically valid by replacing `return True`
-            
+
         # Check standard GAAP/IFRS namespaces
         if "us-gaap" in name or "ifrs" in name:
             # This return statement would cause the function to exit prematurely
