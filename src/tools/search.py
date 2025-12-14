@@ -23,7 +23,15 @@ from src.tools.registry import registry
     },
 )
 def get_company_info(ticker: str) -> dict[str, Any]:
-    """Get company information by ticker."""
+    """
+    Get company information by ticker.
+
+    Args:
+        ticker: Stock ticker symbol.
+
+    Returns:
+        Dictionary containing company details (CIK, name, SIC, etc.).
+    """
     client = get_edgar_client()
     company = client.get_company(ticker)
 
@@ -79,7 +87,19 @@ def search_filings(
     start_year: int | None = None,
     end_year: int | None = None,
 ) -> dict[str, Any]:
-    """Search for SEC filings."""
+    """
+    Search for SEC filings.
+
+    Args:
+        ticker: Stock ticker symbol.
+        form_type: Form type (default: '10-K').
+        limit: Maximum number of filings to return (default: 5).
+        start_year: Optional start year filter.
+        end_year: Optional end year filter.
+
+    Returns:
+        Dictionary containing the list of filings and citations.
+    """
     client = get_edgar_client()
 
     start_date = date(start_year, 1, 1) if start_year else None
@@ -168,6 +188,16 @@ def full_text_search(
 
     This is a powerful discovery tool that searches the full text of all
     EDGAR filings submitted since 2001, including exhibits.
+
+    Args:
+        query: Search query string.
+        form_types: Optional list of form types to filter by.
+        start_year: Optional start year filter.
+        end_year: Optional end year filter.
+        limit: Maximum results to return (default: 10).
+
+    Returns:
+        Dictionary containing search results and citations.
     """
     client = get_edgar_client()
 
@@ -228,7 +258,12 @@ def full_text_search(
     },
 )
 def list_available_forms() -> dict[str, Any]:
-    """List available SEC form types."""
+    """
+    List available SEC form types.
+
+    Returns:
+        Dictionary containing a list of supported form types and their descriptions.
+    """
     return {
         "forms": [
             {

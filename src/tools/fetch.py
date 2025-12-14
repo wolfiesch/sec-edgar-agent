@@ -38,7 +38,17 @@ def get_filing_document(
     accession_number: str,
     max_length: int = 50000,
 ) -> dict[str, Any]:
-    """Fetch the text content of a filing."""
+    """
+    Fetch the text content of a filing.
+
+    Args:
+        ticker: Stock ticker symbol.
+        accession_number: Filing accession number (e.g., '0000320193-24-000123').
+        max_length: Maximum characters to return (default: 50000).
+
+    Returns:
+        Dictionary containing the filing content and metadata.
+    """
     client = get_edgar_client()
     filing = client.get_filing_by_accession(ticker, accession_number)
 
@@ -120,7 +130,17 @@ def get_filing_section(
     accession_number: str,
     section: str,
 ) -> dict[str, Any]:
-    """Extract a specific section from a filing."""
+    """
+    Extract a specific section from a filing.
+
+    Args:
+        ticker: Stock ticker symbol.
+        accession_number: Filing accession number.
+        section: Section to extract (e.g., 'Risk Factors', 'MD&A').
+
+    Returns:
+        Dictionary containing the extracted section content.
+    """
     client = get_edgar_client()
     filing = client.get_filing_by_accession(ticker, accession_number)
 
@@ -228,7 +248,16 @@ def get_filing_exhibits(
     ticker: str,
     accession_number: str,
 ) -> dict[str, Any]:
-    """List exhibits in a filing."""
+    """
+    List exhibits in a filing.
+
+    Args:
+        ticker: Stock ticker symbol.
+        accession_number: Filing accession number.
+
+    Returns:
+        Dictionary containing a list of exhibits for the filing.
+    """
     client = get_edgar_client()
     filing = client.get_filing_by_accession(ticker, accession_number)
 

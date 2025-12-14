@@ -65,7 +65,17 @@ def add_to_watchlist(
     watch_forms: list[str] | None = None,
     notes: str | None = None,
 ) -> dict[str, Any]:
-    """Add a company to the watchlist."""
+    """
+    Add a company to the watchlist.
+
+    Args:
+        ticker: Stock ticker symbol to watch.
+        watch_forms: List of form types to monitor (default: 10-K, 10-Q, 8-K, 4).
+        notes: Optional notes about the company.
+
+    Returns:
+        Dictionary containing confirmation and current watch settings.
+    """
     if watch_forms is None:
         watch_forms = ["10-K", "10-Q", "8-K", "4"]
 
@@ -117,7 +127,15 @@ def add_to_watchlist(
     },
 )
 def remove_from_watchlist(ticker: str) -> dict[str, Any]:
-    """Remove a company from the watchlist."""
+    """
+    Remove a company from the watchlist.
+
+    Args:
+        ticker: Stock ticker symbol to remove.
+
+    Returns:
+        Dictionary indicating success or failure.
+    """
     watchlist = _load_watchlist()
 
     ticker_upper = ticker.upper()
@@ -179,7 +197,15 @@ def get_watchlist() -> dict[str, Any]:
     },
 )
 def check_watchlist_updates(days_back: int = 7) -> dict[str, Any]:
-    """Check for new filings from watchlist companies."""
+    """
+    Check for new filings from watchlist companies.
+
+    Args:
+        days_back: Number of days back to check for filings (default: 7).
+
+    Returns:
+        Dictionary containing a list of new filings found.
+    """
     watchlist = _load_watchlist()
 
     if not watchlist["companies"]:
@@ -241,7 +267,12 @@ def check_watchlist_updates(days_back: int = 7) -> dict[str, Any]:
     },
 )
 def generate_watchlist_summary() -> dict[str, Any]:
-    """Generate summary for all watchlist companies."""
+    """
+    Generate summary for all watchlist companies.
+
+    Returns:
+        Dictionary containing summaries of filings and insider activity for each company.
+    """
     watchlist = _load_watchlist()
 
     if not watchlist["companies"]:

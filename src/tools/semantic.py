@@ -40,7 +40,17 @@ def index_filing(
     form_type: str = "10-K",
     sections: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Index a filing for semantic search."""
+    """
+    Index a filing for semantic search.
+
+    Args:
+        ticker: Stock ticker symbol.
+        form_type: Form type to index (e.g., '10-K', '10-Q').
+        sections: List of sections to index (default: Risk Factors, MD&A).
+
+    Returns:
+        Dictionary containing indexing status and details.
+    """
     if sections is None:
         sections = ["Risk Factors", "MD&A"]
 
@@ -152,7 +162,17 @@ def semantic_search(
     ticker: str | None = None,
     limit: int = 5,
 ) -> dict[str, Any]:
-    """Search filings using semantic similarity."""
+    """
+    Search filings using semantic similarity.
+
+    Args:
+        query: Natural language search query.
+        ticker: Optional stock ticker symbol to filter by.
+        limit: Maximum results to return (default: 5).
+
+    Returns:
+        Dictionary containing search results with relevance scores.
+    """
     vector_store = get_vector_store()
 
     try:
@@ -223,7 +243,17 @@ def find_similar_disclosures(
     section: str = "Risk Factors",
     limit: int = 3,
 ) -> dict[str, Any]:
-    """Find companies with similar disclosures."""
+    """
+    Find companies with similar disclosures.
+
+    Args:
+        ticker: Source company ticker.
+        section: Section to find similarities for (default: 'Risk Factors').
+        limit: Maximum similar companies to return (default: 3).
+
+    Returns:
+        Dictionary containing the source section and similar companies' sections.
+    """
     client = get_edgar_client()
     vector_store = get_vector_store()
 
@@ -306,7 +336,12 @@ def find_similar_disclosures(
     },
 )
 def list_indexed_filings() -> dict[str, Any]:
-    """List indexed filings."""
+    """
+    List indexed filings.
+
+    Returns:
+        Dictionary containing a summary of all indexed filings grouped by ticker.
+    """
     vector_store = get_vector_store()
 
     try:

@@ -41,7 +41,18 @@ def analyze_historical_trends(
     metric: str,
     years: int = 5,
 ) -> dict[str, Any]:
-    """Analyze historical trends for a financial metric."""
+    """
+    Analyze historical trends for a financial metric.
+
+    Args:
+        ticker: Stock ticker symbol.
+        metric: Financial metric to analyze (e.g., 'revenue', 'net_income').
+        years: Number of years to analyze.
+
+    Returns:
+        Dictionary containing trend analysis results, including data points,
+        CAGR, and a narrative summary.
+    """
     client = get_edgar_client()
 
     try:
@@ -88,15 +99,15 @@ def analyze_historical_trends(
             prev_val = data_points[i - 1].get("value", 0)
             curr_val = data_points[i].get("value", 0)
 
-        try:
-            prev_float = float(str(prev_val)) if prev_val is not None else 0.0
-            curr_float = float(str(curr_val)) if curr_val is not None else 0.0
+            try:
+                prev_float = float(str(prev_val)) if prev_val is not None else 0.0
+                curr_float = float(str(curr_val)) if curr_val is not None else 0.0
 
-            prev = prev_float
-            curr = curr_float
-        except (ValueError, TypeError):
-            prev = 0.0
-            curr = 0.0
+                prev = prev_float
+                curr = curr_float
+            except (ValueError, TypeError):
+                prev = 0.0
+                curr = 0.0
 
             if prev != 0:
                 change_pct: float | None = ((curr - prev) / abs(prev)) * 100
@@ -182,7 +193,19 @@ def _generate_trend_narrative(
     trend: str,
     cagr: float | None,
 ) -> str:
-    """Generate a human-readable narrative for the trend."""
+    """
+    Generate a human-readable narrative for the trend.
+
+    Args:
+        ticker: Stock ticker symbol.
+        metric: Financial metric name.
+        data_points: List of data points with year and value.
+        trend: Trend classification (e.g., 'strong_growth').
+        cagr: Compound Annual Growth Rate.
+
+    Returns:
+        A narrative string describing the trend.
+    """
     metric_names = {
         "revenue": "Revenue",
         "net_income": "Net Income",
@@ -216,6 +239,11 @@ def _generate_trend_narrative(
 
     narrative = f"{ticker.upper()}'s {metric_name} {trend_desc.get(trend, 'changed')} "
     narrative += f"from {fmt(first['value'])} in {first['year']} to {fmt(last['value'])} in {last['year']}. "
+
+    # List annual values for clarity
+    if len(data_points) <= 10:
+        values_str = ", ".join([f"{dp['year']} ({fmt(dp['value'])})" for dp in data_points])
+        narrative += f"The annual values were: {values_str}. "
 
     if cagr is not None:
         narrative += f"This represents a CAGR of {cagr:.1f}%. "
@@ -260,7 +288,16 @@ def compare_companies(
     tickers: list[str],
     metrics: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Compare multiple companies across metrics."""
+    """
+    Compare multiple companies across metrics.
+
+    Args:
+        tickers: List of ticker symbols to compare.
+        metrics: List of metrics to compare (defaults to revenue and net_income).
+
+    Returns:
+        Dictionary containing comparison data and rankings for each metric.
+    """
     if metrics is None:
         metrics = ["revenue", "net_income"]
 
@@ -324,7 +361,12 @@ def _extract_risk_section(ticker: str, accession_number: str) -> str | None:
     """
     Extract risk factors section from a filing.
 
-    Returns the text content of Item 1A (Risk Factors), or None if not found.
+    Args:
+        ticker: Stock ticker symbol.
+        accession_number: Filing accession number.
+
+    Returns:
+        The text content of Item 1A (Risk Factors), or None if not found.
     """
     client = get_edgar_client()
     filing = client.get_filing_by_accession(ticker, accession_number)
@@ -369,6 +411,12 @@ def _extract_risk_paragraphs(text: str) -> list[str]:
     Split risk factor text into individual risk paragraphs.
 
     Risk factors typically have headers/titles followed by descriptive paragraphs.
+
+    Args:
+        text: The full text of the risk factors section.
+
+    Returns:
+        List of individual risk factor paragraphs (limited to 50).
     """
     import re
 
@@ -402,6 +450,13 @@ def _compare_risk_texts(risks1: list[str], risks2: list[str]) -> dict[str, Any]:
     Compare two lists of risk factor texts to identify changes.
 
     Uses simple text similarity to find new, removed, and modified risks.
+
+    Args:
+        risks1: List of risk paragraphs from the earlier period.
+        risks2: List of risk paragraphs from the later period.
+
+    Returns:
+        Dictionary containing new, removed, and modified risks, plus a summary.
     """
     from difflib import SequenceMatcher
 
@@ -495,7 +550,17 @@ def detect_risk_changes(
     year1: int,
     year2: int,
 ) -> dict[str, Any]:
-    """Compare risk factors between two years."""
+    """
+    Compare risk factors between two years.
+
+    Args:
+        ticker: Stock ticker symbol.
+        year1: First year to compare (earlier).
+        year2: Second year to compare (later).
+
+    Returns:
+        Dictionary containing the comparison results and narrative.
+    """
     client = get_edgar_client()
 
     try:
@@ -665,6 +730,14 @@ def _get_sic_based_peers(sic: str | None, ticker: str, limit: int) -> list[str]:
     Get peer companies based on SIC code.
 
     Falls back to curated list for well-known companies if SIC not found.
+
+    Args:
+        sic: Standard Industrial Classification code.
+        ticker: Stock ticker symbol (to exclude from peers).
+        limit: Maximum number of peers to return.
+
+    Returns:
+        List of peer ticker symbols.
     """
     if sic:
         # Look for exact SIC match
@@ -720,7 +793,16 @@ def get_sector_peers(
     ticker: str,
     limit: int = 5,
 ) -> dict[str, Any]:
-    """Find peer companies in the same sector."""
+    """
+    Find peer companies in the same sector.
+
+    Args:
+        ticker: Stock ticker to find peers for.
+        limit: Maximum number of peers to return.
+
+    Returns:
+        Dictionary containing company info and list of peers.
+    """
     client = get_edgar_client()
 
     try:

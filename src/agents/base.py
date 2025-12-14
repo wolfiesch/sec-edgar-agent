@@ -84,7 +84,13 @@ class BaseAgent(ABC):
         role: AgentRole,
         model: str | None = None,
     ):
-        """Initialize an agent with its role and backing LLM model."""
+        """
+        Initialize an agent with its role and backing LLM model.
+
+        Args:
+            role: The role this agent plays in the system (e.g., PLANNER, EXECUTOR).
+            model: The LLM model to use (defaults to settings.openai_model).
+        """
         self.role = role
         self.model = model or settings.openai_model
         self.client = OpenAI(api_key=settings.openai_api_key)
@@ -92,7 +98,15 @@ class BaseAgent(ABC):
 
     @abstractmethod
     def run(self, context: AgentContext) -> AgentResponse:
-        """Execute the agent's task."""
+        """
+        Execute the agent's task.
+
+        Args:
+            context: Shared context containing query, plan, and history.
+
+        Returns:
+            AgentResponse containing success status and content.
+        """
         pass
 
     def _call_llm(
@@ -102,7 +116,18 @@ class BaseAgent(ABC):
         tools: list[dict[str, Any]] | None = None,
         max_tokens: int = 4096,
     ) -> dict[str, Any]:
-        """Make a call to OpenAI API."""
+        """
+        Make a call to OpenAI API.
+
+        Args:
+            system_prompt: System prompt defining the agent's persona.
+            messages: List of conversation messages.
+            tools: Optional list of tool definitions.
+            max_tokens: Maximum tokens for response (default: 4096).
+
+        Returns:
+            Dictionary containing content, tool_calls, finish_reason, and usage stats.
+        """
         try:
             # Add system message to messages list (OpenAI format)
             full_messages = [{"role": "system", "content": system_prompt}] + messages
@@ -140,7 +165,15 @@ class BaseAgent(ABC):
         return content or ""
 
     def _extract_tool_calls(self, tool_calls: list[Any] | None) -> list[dict[str, Any]]:
-        """Extract tool calls from OpenAI response."""
+        """
+        Extract tool calls from OpenAI response.
+
+        Args:
+            tool_calls: List of tool call objects from OpenAI response.
+
+        Returns:
+            List of dictionaries with tool id, name, and parsed arguments.
+        """
         if not tool_calls:
             return []
 

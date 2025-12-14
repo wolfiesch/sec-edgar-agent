@@ -47,7 +47,18 @@ def get_income_statement(
     fiscal_year: int | None = None,
     quarter: int | None = None,
 ) -> dict[str, Any]:
-    """Get income statement data."""
+    """
+    Get income statement data.
+
+    Args:
+        ticker: Stock ticker symbol.
+        periods: Number of periods (years/quarters) to retrieve.
+        fiscal_year: Specific fiscal year to retrieve (e.g., 2023).
+        quarter: Specific quarter to retrieve (1-3).
+
+    Returns:
+        Dictionary containing income statement data.
+    """
     client = get_edgar_client()
 
     try:
@@ -139,7 +150,18 @@ def get_balance_sheet(
     fiscal_year: int | None = None,
     quarter: int | None = None,
 ) -> dict[str, Any]:
-    """Get balance sheet data."""
+    """
+    Get balance sheet data.
+
+    Args:
+        ticker: Stock ticker symbol.
+        periods: Number of periods (years/quarters) to retrieve.
+        fiscal_year: Specific fiscal year to retrieve (e.g., 2023).
+        quarter: Specific quarter to retrieve (1-3).
+
+    Returns:
+        Dictionary containing balance sheet data.
+    """
     client = get_edgar_client()
 
     try:
@@ -218,7 +240,18 @@ def get_cash_flow(
     fiscal_year: int | None = None,
     quarter: int | None = None,
 ) -> dict[str, Any]:
-    """Get cash flow statement data."""
+    """
+    Get cash flow statement data.
+
+    Args:
+        ticker: Stock ticker symbol.
+        periods: Number of periods (years/quarters) to retrieve.
+        fiscal_year: Specific fiscal year to retrieve (e.g., 2023).
+        quarter: Specific quarter to retrieve (1-3).
+
+    Returns:
+        Dictionary containing cash flow statement data.
+    """
     client = get_edgar_client()
 
     try:
@@ -285,7 +318,16 @@ def get_insider_trades(
     ticker: str,
     limit: int = 20,
 ) -> dict[str, Any]:
-    """Get insider trading transactions."""
+    """
+    Get insider trading transactions.
+
+    Args:
+        ticker: Stock ticker symbol.
+        limit: Maximum number of transactions to return (default: 20).
+
+    Returns:
+        Dictionary containing a summary of insider transactions.
+    """
     client = get_edgar_client()
 
     try:
@@ -366,7 +408,16 @@ def compare_financials(
     tickers: list[str],
     metric: str,
 ) -> dict[str, Any]:
-    """Compare a metric across companies."""
+    """
+    Compare a metric across companies.
+
+    Args:
+        tickers: List of stock ticker symbols to compare.
+        metric: Financial metric to compare (e.g., 'revenue', 'net_income').
+
+    Returns:
+        Dictionary containing comparison results for the specified metric.
+    """
     client = get_edgar_client()
 
     results = []
