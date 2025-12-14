@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 import pandas as pd
 from bs4 import BeautifulSoup
 from edgar import Company
+from starlette.concurrency import run_in_threadpool
 
 
 @dataclass
@@ -286,7 +287,7 @@ class TableParser:
             section=section
         )
 
-    def parse_from_filing(
+    async def parse_from_filing(
         self,
         ticker: str,
         form_type: str,
@@ -294,24 +295,29 @@ class TableParser:
         year: int | None = None
     ) -> ParsedTable:
         """High-level interface: fetch filing and parse table."""
-        company = Company(ticker)
-        filings = company.get_filings(form=form_type)
+        # Run blocking edgartools calls in threadpool
+        def _get_filing_html():
+            company = Company(ticker)
+            filings = company.get_filings(form=form_type)
 
-        if not filings:
-             raise ValueError(f"No {form_type} filings found for {ticker}")
+            if not filings:
+                 raise ValueError(f"No {form_type} filings found for {ticker}")
 
-        selected_filing = None
-        if year:
-            for f in filings:
-                if f.filing_date.year == year:
-                    selected_filing = f
-                    break
-            if not selected_filing:
-                 raise ValueError(f"No {form_type} filing found for {ticker} in {year}")
-        else:
-            selected_filing = filings[0]
+            selected_filing = None
+            if year:
+                for f in filings:
+                    if f.filing_date.year == year:
+                        selected_filing = f
+                        break
+                if not selected_filing:
+                     raise ValueError(f"No {form_type} filing found for {ticker} in {year}")
+            else:
+                selected_filing = filings[0]
 
-        html_content = selected_filing.html()
+            return selected_filing, selected_filing.html()
+
+        selected_filing, html_content = await run_in_threadpool(_get_filing_html)
+
         if not html_content:
             raise ValueError("Could not retrieve HTML content from filing")
 
