@@ -1,7 +1,9 @@
-"""Endpoints for parsing structured tables out of filings."""
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session
 
+from ...data.repositories.tables import TableRepository
 from ...parsers.table_parser import TableParser
+from ..dependencies import get_db
 from ..models.requests import TableParseRequest
 from ..models.responses import ParsedTableResponse
 
@@ -9,23 +11,59 @@ router = APIRouter()
 parser = TableParser()  # Singleton for demo specific context maps
 
 @router.post("/parse", response_model=ParsedTableResponse)
-async def parse_table(request: TableParseRequest) -> ParsedTableResponse:
+async def parse_table(
+    request: TableParseRequest,
+    session: Session = Depends(get_db)
+) -> ParsedTableResponse:
     """
     Parse a table from SEC filing with 100% accuracy.
 
+    Checks cache first, then parses if necessary.
     Returns structured Markdown table ready for LLM consumption.
     """
+    repo = TableRepository(session)
+
     try:
-        result = parser.parse_from_filing(
+        # 1. Check Cache
+        cached = repo.get(
+            ticker=request.ticker,
+            form_type=request.form_type,
+            year=request.year,
+            table_name=request.table_name
+        )
+
+        if cached:
+            return ParsedTableResponse(
+                markdown=cached.markdown,
+                structured=cached.structured,
+                citation=cached.citation,
+                confidence=cached.confidence,
+                section=cached.section,
+                metadata={
+                    "source_method": cached.source_method + " (cached)",
+                    "ticker": request.ticker,
+                    "form_type": request.form_type,
+                    "year": request.year,
+                    "table_type": request.table_name
+                }
+            )
+
+        # 2. Parse (Async)
+        result = await parser.parse_from_filing(
             ticker=request.ticker,
             form_type=request.form_type,
             table_identifier=request.table_name,
             year=request.year
         )
 
-        # Mock citation if missing? result.citation should have it.
-        # result.citation from parser is string "[AAPL 10-K 2024]"
-        # Response model expects citation string.
+        # 3. Save to Cache
+        repo.create(
+            domain_table=result,
+            ticker=request.ticker,
+            form_type=request.form_type,
+            year=request.year,
+            table_name=request.table_name
+        )
 
         return ParsedTableResponse(
             markdown=result.markdown,
