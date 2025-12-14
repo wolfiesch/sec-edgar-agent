@@ -54,21 +54,21 @@ function App() {
   const hasResult = events.length > 0;
   
   return (
-    <div className="min-h-screen bg-gray-950 text-white font-sans selection:bg-blue-500/30">
+    <div className="min-h-screen bg-[rgb(var(--bg-dark))] text-[rgb(var(--text-main))] font-sans selection:bg-sky-500/30">
         {/* Header */}
-        <header className="border-b border-gray-800 bg-gray-900/50 backdrop-blur-sm sticky top-0 z-10">
+        <header className="border-b border-slate-800/60 bg-[rgb(var(--bg-dark))]/80 backdrop-blur-md sticky top-0 z-50">
             <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <div className="bg-blue-600 p-2 rounded-lg">
+                <div className="flex items-center gap-3">
+                    <div className="bg-gradient-to-br from-sky-500 to-blue-600 p-2.5 rounded-xl shadow-lg shadow-sky-500/20">
                         <Layout className="w-5 h-5 text-white" />
                     </div>
-                    <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">
+                    <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-sky-400 to-emerald-400 tracking-tight">
                         SEC Edgar Agent
                     </h1>
                 </div>
 
                 {/* Navigation Tabs */}
-                <div className="flex items-center bg-gray-900 border border-gray-800 rounded-lg p-1">
+                <div className="flex items-center bg-slate-900/50 border border-slate-800 rounded-xl p-1.5 backdrop-blur-sm">
                     <button
                         onClick={() => setActiveTab('chat')}
                         className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
@@ -142,7 +142,7 @@ function App() {
         </header>
 
         {/* Main Content */}
-        <main className="container mx-auto px-4 py-8 max-w-7xl relative">
+        <main className="container mx-auto px-4 py-8 max-w-[1600px] relative">
             
             {activeTab === 'chat' ? (
                 <>

@@ -30,29 +30,29 @@ function processCitations(text: string): string {
 const markdownComponents: Components = {
   // Enhanced table styling
   table: ({ children }) => (
-    <div className="overflow-x-auto my-4">
-      <table className="min-w-full divide-y divide-gray-700 border border-gray-700 rounded-lg">
+    <div className="overflow-x-auto my-6 rounded-xl border border-slate-700/50 shadow-sm">
+      <table className="min-w-full divide-y divide-slate-700/50">
         {children}
       </table>
     </div>
   ),
   thead: ({ children }) => (
-    <thead className="bg-gray-800">
+    <thead className="bg-slate-800/80 backdrop-blur-sm">
       {children}
     </thead>
   ),
   th: ({ children }) => (
-    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
+    <th className="px-6 py-4 text-left text-xs font-bold text-slate-300 uppercase tracking-wider">
       {children}
     </th>
   ),
   td: ({ children }) => (
-    <td className="px-4 py-3 text-sm text-gray-300 border-t border-gray-700">
+    <td className="px-6 py-4 text-sm text-slate-300 border-t border-slate-700/30 whitespace-pre-wrap">
       {children}
     </td>
   ),
   tr: ({ children }) => (
-    <tr className="hover:bg-gray-800/50 transition-colors">
+    <tr className="hover:bg-slate-800/30 transition-colors odd:bg-slate-900/20 even:bg-transparent">
       {children}
     </tr>
   ),
@@ -64,11 +64,15 @@ const markdownComponents: Components = {
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className={`inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 underline decoration-blue-400/50 hover:decoration-blue-300 transition-colors ${isSecLink ? 'bg-blue-900/20 px-1.5 py-0.5 rounded text-sm font-medium no-underline hover:bg-blue-900/30' : ''}`}
+        className={`inline-flex items-center gap-1.5 transition-all
+          ${isSecLink 
+            ? 'bg-sky-900/30 text-sky-300 px-2 py-0.5 rounded-md text-sm font-medium hover:bg-sky-900/50 hover:text-sky-200 border border-sky-800/30' 
+            : 'text-sky-400 hover:text-sky-300 underline decoration-sky-400/50 hover:decoration-sky-300'
+          }`}
       >
-        {isSecLink && <FileText className="w-3 h-3" />}
+        {isSecLink && <FileText className="w-3.5 h-3.5" />}
         {children}
-        {!isSecLink && <ExternalLink className="w-3 h-3 inline" />}
+        {!isSecLink && <ExternalLink className="w-3 h-3 inline opacity-70" />}
       </a>
     );
   },
@@ -77,62 +81,66 @@ const markdownComponents: Components = {
     const isInline = !className;
     if (isInline) {
       return (
-        <code className="bg-gray-800 text-emerald-400 px-1.5 py-0.5 rounded text-sm font-mono">
+        <code className="bg-slate-800/80 text-emerald-400 px-1.5 py-0.5 rounded text-sm font-mono border border-slate-700/50">
           {children}
         </code>
       );
     }
     return (
-      <code className={`${className} block bg-gray-900 p-4 rounded-lg overflow-x-auto text-sm`}>
+      <code className={`${className} block bg-slate-950 p-6 rounded-xl overflow-x-auto text-sm border border-slate-800 shadow-inner font-mono my-4`}>
         {children}
       </code>
     );
   },
   // List styling
   ul: ({ children }) => (
-    <ul className="list-disc list-inside space-y-1 my-3 text-gray-300">
+    <ul className="list-disc list-outside space-y-2 my-4 ml-4 text-slate-300 marker:text-sky-500">
       {children}
     </ul>
   ),
   ol: ({ children }) => (
-    <ol className="list-decimal list-inside space-y-1 my-3 text-gray-300">
+    <ol className="list-decimal list-outside space-y-2 my-4 ml-4 text-slate-300 marker:text-sky-500 font-medium">
       {children}
     </ol>
   ),
   // Heading styling
   h1: ({ children }) => (
-    <h1 className="text-2xl font-bold text-gray-100 mt-6 mb-3 border-b border-gray-700 pb-2">
+    <h1 className="text-3xl font-extrabold text-white mt-10 mb-6 pb-4 border-b border-slate-700/50 bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
       {children}
     </h1>
   ),
   h2: ({ children }) => (
-    <h2 className="text-xl font-semibold text-gray-100 mt-5 mb-2">
+    <h2 className="text-2xl font-bold text-slate-100 mt-8 mb-4 flex items-center gap-3">
+      <span className="w-2 h-8 rounded-full bg-sky-500 inline-block"></span>
       {children}
     </h2>
   ),
   h3: ({ children }) => (
-    <h3 className="text-lg font-medium text-gray-200 mt-4 mb-2">
+    <h3 className="text-lg font-semibold text-slate-200 mt-6 mb-3">
       {children}
     </h3>
   ),
   // Paragraph styling
   p: ({ children }) => (
-    <p className="text-gray-300 leading-relaxed my-3">
+    <p className="text-slate-300 leading-relaxed my-4 text-base">
       {children}
     </p>
   ),
   // Strong/bold styling
   strong: ({ children }) => (
-    <strong className="font-semibold text-gray-100">
+    <strong className="font-bold text-slate-100">
       {children}
     </strong>
   ),
   // Blockquote styling
   blockquote: ({ children }) => (
-    <blockquote className="border-l-4 border-blue-500 pl-4 my-4 text-gray-400 italic">
+    <blockquote className="border-l-4 border-sky-500/50 pl-6 py-2 my-6 text-slate-400 italic bg-slate-900/30 rounded-r-lg">
       {children}
     </blockquote>
   ),
+  hr: () => (
+    <hr className="my-8 border-slate-700/50" />
+  )
 };
 
 export function ResponsePanel({ content, isProcessing, onToast }: ResponsePanelProps) {

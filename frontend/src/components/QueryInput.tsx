@@ -18,17 +18,43 @@ const EXAMPLE_QUERIES = [
 
 export function QueryInput({ onSubmit, isLoading, onReset, hasResult }: QueryInputProps) {
   const [value, setValue] = useState('');
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitQuery = () => {
     if (value.trim() && !isLoading) {
       onSubmit(value);
+      // Reset height
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+      }
     }
+  };
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    submitQuery();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      submitQuery();
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setValue(e.target.value);
+    // Auto-resize
+    e.target.style.height = 'auto';
+    e.target.style.height = `${e.target.scrollHeight}px`;
   };
 
   const handleClear = () => {
     setValue('');
     if (onReset) onReset();
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
   };
 
   const handleExampleClick = (query: string) => {
@@ -39,36 +65,46 @@ export function QueryInput({ onSubmit, isLoading, onReset, hasResult }: QueryInp
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto space-y-4">
-      <form onSubmit={handleSubmit} className="relative">
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder="Ask about companies, filings, or financial data..."
-          className="w-full px-6 py-4 text-lg bg-gray-800 border border-gray-700 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pl-14 pr-24 text-white placeholder-gray-400 shadow-lg transition-all"
-          disabled={isLoading}
-        />
-        <Search className="absolute left-5 top-1/2 transform -translate-y-1/2 text-gray-400 w-6 h-6" />
+    <div className="w-full max-w-3xl mx-auto space-y-6 transition-all duration-500 ease-out">
+      <form onSubmit={handleSubmit} className="relative group">
+        <div className={`absolute -inset-1 bg-gradient-to-r from-sky-500 to-emerald-500 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200 ${isLoading ? 'animate-pulse' : ''}`}></div>
+        <div className="relative">
+          <textarea
+            ref={textareaRef}
+            value={value}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask about companies, filings, or financial data..."
+            rows={1}
+            className="w-full px-6 py-4 pl-14 pr-24 text-lg bg-slate-900/90 border border-slate-700/50 rounded-2xl focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-transparent text-slate-100 placeholder-slate-400 shadow-xl backdrop-blur-xl resize-none min-h-[60px] max-h-[200px] overflow-y-auto scrollbar-hide"
+            disabled={isLoading}
+          />
+          <Search className="absolute left-5 top-5 text-slate-400 w-6 h-6" />
 
-        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
-          {hasResult && !isLoading && (
+          <div className="absolute right-3 top-3 flex items-center gap-2">
+            {hasResult && !isLoading && (
+              <button
+                type="button"
+                onClick={handleClear}
+                className="p-2 text-slate-400 hover:text-white transition-colors bg-slate-800/50 hover:bg-slate-700/50 rounded-lg backdrop-blur-sm"
+                title="Clear and Reset"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
             <button
-              type="button"
-              onClick={handleClear}
-              className="p-2 text-gray-400 hover:text-white transition-colors"
-              title="Clear and Reset"
+              type="submit"
+              disabled={!value.trim() || isLoading}
+              className="bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white px-4 py-2 rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-sky-500/20 active:scale-95 flex items-center gap-2 h-10"
             >
-              <X className="w-5 h-5" />
+              {isLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Thinking</span>
+                </>
+              ) : 'Ask'}
             </button>
-          )}
-          <button
-            type="submit"
-            disabled={!value.trim() || isLoading}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-full font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? 'Thinking...' : 'Go'}
-          </button>
+          </div>
         </div>
       </form>
 
