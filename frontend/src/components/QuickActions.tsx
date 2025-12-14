@@ -199,9 +199,9 @@ export function QuickActions({ onSubmit, isLoading }: QuickActionsProps) {
     <div className="w-full max-w-3xl mx-auto space-y-4">
       {/* Ticker Input with Autocomplete */}
       <div className="relative" ref={dropdownRef}>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <span className="text-sm text-gray-400 whitespace-nowrap">Select company:</span>
-          <div className="relative flex-1 max-w-xs">
+          <div className="relative flex-1 w-full sm:max-w-xs">
             <input
               ref={inputRef}
               type="text"
@@ -225,7 +225,7 @@ export function QuickActions({ onSubmit, isLoading }: QuickActionsProps) {
             </button>
           </div>
           {recentTickers.length > 0 && !ticker && (
-            <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-2">
               <History className="w-3.5 h-3.5 text-gray-500" />
               <div className="flex gap-1.5">
                 {recentTickers.slice(0, 3).map(t => (
@@ -262,7 +262,7 @@ export function QuickActions({ onSubmit, isLoading }: QuickActionsProps) {
       </div>
 
       {/* Quick Action Buttons */}
-      <div className="flex flex-wrap justify-center gap-2">
+      <div className="grid grid-cols-2 sm:flex sm:flex-wrap justify-center gap-2">
         {QUICK_ACTIONS.map((action) => (
           <button
             key={action.label}

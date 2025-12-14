@@ -11,8 +11,9 @@ import { FilingDiff } from './components/FilingDiff';
 import { ToastContainer, useToast } from './components/Toast';
 import { useQuery } from './hooks/useQuery';
 import { useQueryHistory } from './hooks/useQueryHistory';
-import { Layout, History as HistoryIcon, Table as TableIcon, MessageSquare, Search, GitCompare, FileSearch } from 'lucide-react';
+import { Layout, History as HistoryIcon, Table as TableIcon, MessageSquare, Search, GitCompare, FileSearch, Menu } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { MobileNav } from './components/MobileNav';
 
 function App() {
   const {
@@ -27,8 +28,10 @@ function App() {
 
   const { history, addToHistory, clearHistory } = useQueryHistory();
   const { toasts, dismissToast, success, error, info } = useToast();
+
   const [showHistory, setShowHistory] = useState(false);
   const [activeTab, setActiveTab] = useState<'chat' | 'tables' | 'search' | 'compare' | 'changes'>('chat');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleToast = (type: 'success' | 'error' | 'info', message: string) => {
     if (type === 'success') success(message);
@@ -59,16 +62,18 @@ function App() {
         <header className="border-b border-slate-800/60 bg-[rgb(var(--bg-dark))]/80 backdrop-blur-md sticky top-0 z-50">
             <div className="container mx-auto px-4 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <div className="bg-gradient-to-br from-sky-500 to-blue-600 p-2.5 rounded-xl shadow-lg shadow-sky-500/20">
-                        <Layout className="w-5 h-5 text-white" />
+                    <div className="bg-gradient-to-br from-sky-500 to-blue-600 p-2 md:p-2.5 rounded-xl shadow-lg shadow-sky-500/20">
+                        <Layout className="w-4 h-4 md:w-5 md:h-5 text-white" />
                     </div>
-                    <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-sky-400 to-emerald-400 tracking-tight">
-                        SEC Edgar Agent
-                    </h1>
+                    <div>
+                        <h1 className="text-lg sm:text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-sky-400 to-emerald-400 tracking-tight">
+                            SEC Edgar Agent
+                        </h1>
+                    </div>
                 </div>
 
-                {/* Navigation Tabs */}
-                <div className="flex items-center bg-slate-900/50 border border-slate-800 rounded-xl p-1.5 backdrop-blur-sm">
+                {/* Desktop Navigation Tabs */}
+                <div className="hidden md:flex items-center bg-slate-900/50 border border-slate-800 rounded-xl p-1.5 backdrop-blur-sm">
                     <button
                         onClick={() => setActiveTab('chat')}
                         className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
@@ -126,6 +131,8 @@ function App() {
                     </button>
                 </div>
 
+
+
                 <div className="flex items-center gap-4 text-sm">
                     {activeTab === 'chat' && (
                         <button 
@@ -136,10 +143,25 @@ function App() {
                             <span className="hidden sm:inline">History</span>
                         </button>
                     )}
-                    <div className="text-gray-500">v0.1.0</div>
+                    <div className="hidden sm:block text-gray-500">v0.1.0</div>
+                    
+                    {/* Mobile Menu Button */}
+                    <button
+                        onClick={() => setIsMobileMenuOpen(true)}
+                        className="md:hidden p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                    >
+                        <Menu className="w-5 h-5" />
+                    </button>
                 </div>
             </div>
         </header>
+
+        <MobileNav 
+            activeTab={activeTab} 
+            setActiveTab={setActiveTab} 
+            isOpen={isMobileMenuOpen} 
+            onClose={() => setIsMobileMenuOpen(false)} 
+        />
 
         {/* Main Content */}
         <main className="container mx-auto px-4 py-8 max-w-[1600px] relative">
@@ -183,10 +205,10 @@ function App() {
                     </div>
 
                     {/* Workspace Grid */}
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                        {/* Left: Workflow Feed */}
-                        <div className="lg:col-span-4 space-y-6">
-                            <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-4 h-[600px] overflow-y-auto custom-scrollbar">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+                        {/* Left: Workflow Feed - Order 2 on mobile */}
+                        <div className="order-2 lg:order-1 lg:col-span-4 space-y-6">
+                            <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-4 h-[400px] lg:h-[600px] overflow-y-auto custom-scrollbar">
                                 <WorkflowTimeline
                                     events={events}
                                     connectionStatus={connectionStatus as 'disconnected' | 'connecting' | 'connected' | 'error'}
@@ -194,9 +216,9 @@ function App() {
                             </div>
                         </div>
 
-                        {/* Right: Response Area */}
-                        <div className="lg:col-span-8">
-                            <div className="bg-gray-900/50 rounded-xl border border-gray-800 min-h-[600px] h-full"> 
+                        {/* Right: Response Area - Order 1 on mobile */}
+                        <div className="order-1 lg:order-2 lg:col-span-8">
+                            <div className="bg-gray-900/50 rounded-xl border border-gray-800 min-h-[400px] lg:h-full"> 
                                 <ResponsePanel content={finalAnswer} isProcessing={isProcessing} onToast={handleToast} />
                             </div>
                         </div>

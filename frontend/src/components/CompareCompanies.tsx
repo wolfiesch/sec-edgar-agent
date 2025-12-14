@@ -178,7 +178,7 @@ export function CompareCompanies({ onToast }: CompareCompaniesProps) {
                   value={ticker}
                   onChange={(e) => handleTickerChange(idx, e.target.value)}
                   placeholder={`Ticker ${idx + 1}`}
-                  className="w-28 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full sm:w-28 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   list={`ticker-suggestions-${idx}`}
                 />
                 <datalist id={`ticker-suggestions-${idx}`}>
@@ -199,7 +199,7 @@ export function CompareCompanies({ onToast }: CompareCompaniesProps) {
             {tickers.length < 5 && (
               <button
                 onClick={handleAddTicker}
-                className="w-28 px-3 py-2 border-2 border-dashed border-gray-700 hover:border-gray-500 rounded-lg text-gray-500 hover:text-gray-300 transition-colors flex items-center justify-center gap-1"
+                className="w-full sm:w-28 px-3 py-2 border-2 border-dashed border-gray-700 hover:border-gray-500 rounded-lg text-gray-500 hover:text-gray-300 transition-colors flex items-center justify-center gap-1"
               >
                 <Plus className="w-4 h-4" />
                 Add
@@ -342,7 +342,7 @@ export function CompareCompanies({ onToast }: CompareCompaniesProps) {
           {viewMode === 'chart' && (
             <div className="flex items-center gap-4 flex-wrap">
               {/* Metric Selector */}
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                 <span className="text-sm text-gray-400">Metric:</span>
                 <select
                   value={chartMetric}

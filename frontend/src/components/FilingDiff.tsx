@@ -219,15 +219,15 @@ export function FilingDiff({ onToast }: FilingDiffProps) {
                 </p>
               </div>
               <div className="grid grid-cols-3 gap-4 text-center">
-                <div className="bg-emerald-900/30 border border-emerald-700/50 rounded-lg px-4 py-2">
+                <div className="bg-emerald-900/30 border border-emerald-700/50 rounded-lg px-2 py-1 sm:px-4 sm:py-2">
                   <div className="text-2xl font-bold text-emerald-400">{result.changes.summary.new_count}</div>
                   <div className="text-xs text-emerald-300">Added</div>
                 </div>
-                <div className="bg-red-900/30 border border-red-700/50 rounded-lg px-4 py-2">
+                <div className="bg-red-900/30 border border-red-700/50 rounded-lg px-2 py-1 sm:px-4 sm:py-2">
                   <div className="text-2xl font-bold text-red-400">{result.changes.summary.removed_count}</div>
                   <div className="text-xs text-red-300">Removed</div>
                 </div>
-                <div className="bg-amber-900/30 border border-amber-700/50 rounded-lg px-4 py-2">
+                <div className="bg-amber-900/30 border border-amber-700/50 rounded-lg px-2 py-1 sm:px-4 sm:py-2">
                   <div className="text-2xl font-bold text-amber-400">{result.changes.summary.modified_count}</div>
                   <div className="text-xs text-amber-300">Modified</div>
                 </div>

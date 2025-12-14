@@ -57,7 +57,7 @@ export function TableParser() {
 
       {/* Input Form */}
       <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-6 backdrop-blur-sm">
-        <form onSubmit={handleParse} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+        <form onSubmit={handleParse} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 items-end">
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-300">Ticker</label>
             <input
@@ -104,7 +104,7 @@ export function TableParser() {
           <button
             type="submit"
             disabled={loading}
-            className="bg-blue-600 hover:bg-blue-500 text-white font-medium py-2 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="col-span-2 sm:col-span-1 bg-blue-600 hover:bg-blue-500 text-white font-medium py-2 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <TableIcon className="w-4 h-4" />}
             Parse
