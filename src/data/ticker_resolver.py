@@ -309,12 +309,13 @@ class TickerResolver:
         self.sec_api_enabled = sec_api_enabled
         self._sec_cache: dict[str, str] = {}
 
-    def resolve(self, query: str) -> str | None:
+    def resolve(self, query: str, allow_remote: bool = True) -> str | None:
         """
         Resolve a company name or ticker to a valid ticker symbol.
 
         Args:
             query: Company name or ticker symbol
+            allow_remote: Whether to use SEC EDGAR API as fallback (if globally enabled)
 
         Returns:
             Ticker symbol if found, None otherwise
@@ -325,9 +326,10 @@ class TickerResolver:
         query = query.strip()
         query_upper = query.upper()
         query_lower = query.lower()
+        ticker_like = query_upper.isalpha() and 1 <= len(query_upper) <= 5
 
         # 1. Check if it's already a valid ticker (uppercase, 1-5 chars)
-        if query_upper.isalpha() and 1 <= len(query_upper) <= 5:
+        if ticker_like:
             # Could be a ticker - check if it's in our known list
             if query_upper in COMPANY_TICKERS.values():
                 return query_upper
@@ -337,18 +339,32 @@ class TickerResolver:
             return COMPANY_TICKERS[query_lower]
 
         # 3. Try fuzzy matching
-        fuzzy_match = self._fuzzy_match(query_lower)
-        if fuzzy_match:
-            return fuzzy_match
+        # Block strict common words from fuzzy matching to prevent "Ticker" -> "ICE"
+        ignored_words = {
+            "ticker", "stock", "share", "company", "price", "value", 
+            "about", "info", "give", "show", "tell", "what", "where", "when", "why", "how", 
+            "for", "and", "the", "with", "from", "of", "in", "to", "at", "by", 
+            "is", "was", "were", "are", "be", "has", "have", "had", 
+            "total", "net", "operating", "income", "revenue", "sales", "earnings", "profit", 
+            "assets", "liabilities", "debt", "cash", "flow", "equity", 
+            "get", "find", "search", "look", "summary", "analysis", "report"
+        }
+        # Skip fuzzy matching for ignored words, unless it looks like a ticker
+        if query_lower in ignored_words and not ticker_like:
+            return None
+        if query_lower not in ignored_words:
+            fuzzy_match = self._fuzzy_match(query_lower, threshold=0.8)
+            if fuzzy_match:
+                return fuzzy_match
 
         # 4. Try SEC EDGAR API as fallback
-        if self.sec_api_enabled:
+        if self.sec_api_enabled and allow_remote:
             sec_result = self._search_sec_edgar(query)
             if sec_result:
                 return sec_result
 
         # 5. If all else fails, assume it might be a ticker
-        if query_upper.isalpha() and 1 <= len(query_upper) <= 5:
+        if ticker_like:
             return query_upper
 
         # If nothing found, return None
@@ -481,14 +497,15 @@ def get_ticker_resolver() -> TickerResolver:
     return _resolver
 
 
-def resolve_ticker(query: str) -> str | None:
+def resolve_ticker(query: str, allow_remote: bool = True) -> str | None:
     """
     Convenience function to resolve a company name to ticker.
 
     Args:
         query: Company name or ticker
+        allow_remote: Whether to allow remote API calls
 
     Returns:
         Ticker symbol if found, None otherwise
     """
-    return get_ticker_resolver().resolve(query)
+    return get_ticker_resolver().resolve(query, allow_remote=allow_remote)
