@@ -147,8 +147,9 @@ class TestGetFilings:
         mock_filing.filing_href = "https://www.sec.gov/..."
         mock_filing.primary_document = "aapl-20230930.htm"
 
+        # Mock filings as an iterable (since we convert to list)
         mock_filings = MagicMock()
-        mock_filings.head.return_value = [mock_filing]
+        mock_filings.__iter__ = Mock(return_value=iter([mock_filing]))
         mock_company_obj.get_filings.return_value = mock_filings
 
         mock_edgar_company.return_value = mock_company_obj
@@ -173,16 +174,27 @@ class TestGetFilings:
         mock_company_obj.sic_description = None
         mock_company_obj.exchange = None
 
-        # Create a mock filings object with filter method
+        # Create mock filings with dates for filtering
+        mock_filing_in_range = MagicMock()
+        mock_filing_in_range.filing_date = date(2022, 1, 15)
+        mock_filing_in_range.accession_number = "test-in-range"
+        mock_filing_in_range.form = "10-K"
+        mock_filing_in_range.report_date = None
+        mock_filing_in_range.primary_document = None
+        mock_filing_in_range.filing_href = None
+
+        mock_filing_out_of_range = MagicMock()
+        mock_filing_out_of_range.filing_date = date(2019, 1, 15)
+
+        # Mock filings as iterable with both in and out of range
         mock_filings = MagicMock()
-        mock_filings.filter.return_value = mock_filings
-        mock_filings.head.return_value = []
+        mock_filings.__iter__ = Mock(return_value=iter([mock_filing_in_range, mock_filing_out_of_range]))
         mock_company_obj.get_filings.return_value = mock_filings
 
         mock_edgar_company.return_value = mock_company_obj
 
         client = EdgarClient()
-        client.get_filings(
+        results = client.get_filings(
             "TEST",
             "10-K",
             limit=5,
@@ -190,8 +202,9 @@ class TestGetFilings:
             end_date=date(2023, 12, 31),
         )
 
-        # Verify filter was called for date range
-        assert mock_filings.filter.call_count == 2
+        # Verify filtering worked - only the in-range filing should be returned
+        assert len(results) == 1
+        assert results[0].accession_number == "test-in-range"
 
     @patch("src.data.edgar_client.edgar.set_identity")
     @patch("src.data.edgar_client.EdgarCompany")
@@ -204,8 +217,9 @@ class TestGetFilings:
         mock_company_obj.sic_description = None
         mock_company_obj.exchange = None
 
+        # Mock filings as an empty iterable
         mock_filings = MagicMock()
-        mock_filings.head.return_value = []
+        mock_filings.__iter__ = Mock(return_value=iter([]))
         mock_company_obj.get_filings.return_value = mock_filings
 
         mock_edgar_company.return_value = mock_company_obj

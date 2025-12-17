@@ -157,18 +157,17 @@ class EdgarClient:
         )
         edgar_filings = edgar_company.get_filings(form=form_type)
 
-        # Apply date filters if provided
+        # Convert to list and apply date filters manually
+        # (edgartools .filter() has issues with lambda closures)
+        all_filings = list(edgar_filings)
+
         if start_date:
-            edgar_filings = edgar_filings.filter(
-                lambda f: f.filing_date >= start_date
-            )
+            all_filings = [f for f in all_filings if f.filing_date >= start_date]
         if end_date:
-            edgar_filings = edgar_filings.filter(
-                lambda f: f.filing_date <= end_date
-            )
+            all_filings = [f for f in all_filings if f.filing_date <= end_date]
 
         filings = []
-        for ef in edgar_filings.head(limit):
+        for ef in all_filings[:limit]:
             filing = Filing(
                 accession_number=ef.accession_number,
                 form_type=ef.form,
