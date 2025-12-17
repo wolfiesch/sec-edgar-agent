@@ -66,9 +66,9 @@ class TestFilingCache:
 
     def test_get_expired_key(self, cache: FilingCache) -> None:
         """Test that expired keys return None."""
-        # Set with very short TTL (1ms)
-        cache.set("test_key", "value", ttl_seconds=1)
-        time.sleep(0.01)  # Wait for expiration
+        # Set with very short TTL and wait for expiration
+        cache.set("test_key", "value", ttl_seconds=0.005)  # 5ms TTL
+        time.sleep(0.02)  # Wait 20ms for expiration
 
         result = cache.get("test_key")
         assert result is None
@@ -77,8 +77,8 @@ class TestFilingCache:
         self, cache: FilingCache, temp_cache_dir: Path
     ) -> None:
         """Test that getting expired key deletes the file."""
-        cache.set("test_key", "value", ttl_seconds=1)
-        time.sleep(0.01)
+        cache.set("test_key", "value", ttl_seconds=0.005)  # 5ms TTL
+        time.sleep(0.02)  # Wait 20ms for expiration
 
         cache.get("test_key")
 
