@@ -11,8 +11,6 @@ interface UseQueryResult {
     reset: () => void;
 }
 
-const API_KEY = 'sec-api-demo';
-
 /**
  * Map technical error messages to user-friendly versions
  */
@@ -87,15 +85,13 @@ export function useQuery(): UseQueryResult {
 
         try {
             // Use SSE streaming endpoint
-            // Note: EventSource doesn't support custom headers, so we pass API key as query param
-            // The backend should support this, or we use fetch with streaming
             const streamUrl = `/api/v1/chat/stream?query=${encodeURIComponent(q)}`;
 
-            // Use fetch with streaming since EventSource doesn't support custom headers
+            // Use fetch with streaming since EventSource doesn't support custom headers.
+            // API auth must be added by a trusted server-side proxy, not browser JS.
             const response = await fetch(streamUrl, {
                 method: 'GET',
                 headers: {
-                    'X-API-Key': API_KEY,
                     'Accept': 'text/event-stream',
                 },
             });
