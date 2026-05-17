@@ -10,7 +10,11 @@ services:
       - CHROMA_PERSIST_DIR=/app/data/chroma
       - SQLITE_DB_PATH=/app/data/job_tracking.db
       - SEC_USER_AGENT=${SEC_USER_AGENT:-"DemoUser email@example.com"}
-      - API_KEY=${API_KEY:-"sec-api-demo"}
+      # Local demo defaults only. Set ENVIRONMENT=production and a real API_KEY
+      # outside local Docker development.
+      - ENVIRONMENT=${ENVIRONMENT:-local}
+      - API_KEY=${API_KEY:-sec-api-demo}
+      - CORS_ORIGINS=${CORS_ORIGINS:-}
     volumes:
       - ./data:/app/data
     restart: unless-stopped

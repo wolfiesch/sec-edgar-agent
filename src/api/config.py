@@ -1,10 +1,15 @@
 """API configuration settings loaded from environment and defaults."""
+import json
 import logging
 import sys
+from typing import Annotated, Any
 
 import structlog
-from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, field_validator, model_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+DEFAULT_DEV_API_KEY = "sec-api-demo"
+LOCAL_ENVIRONMENTS = {"local", "dev", "development", "test", "testing"}
 
 
 class Settings(BaseSettings):
@@ -18,7 +23,14 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     PROJECT_NAME: str = "SEC API for LLMs"
     VERSION: str = "0.1.0"
-    CORS_ORIGINS: list[str] = ["*"]
+    ENVIRONMENT: str = Field(
+        default="production",
+        description="Runtime environment: local/dev/test allow development defaults",
+    )
+    CORS_ORIGINS: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        description="Allowed CORS origins. Wildcard is only allowed in local/dev/test.",
+    )
 
     # Validation settings
     DEBUG: bool = False
@@ -37,7 +49,7 @@ class Settings(BaseSettings):
 
     # API Key (loaded from global settings, but can be overridden)
     API_KEY: str = Field(
-        default="sec-api-demo",
+        default=DEFAULT_DEV_API_KEY,
         description="API key for protected endpoints"
     )
 
@@ -51,12 +63,52 @@ class Settings(BaseSettings):
         description="OpenAI model to use for chat"
     )
 
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, value: Any) -> Any:
+        """Support JSON arrays and comma-separated CORS origins."""
+        if isinstance(value, str):
+            stripped = value.strip()
+            if not stripped:
+                return []
+            if stripped.startswith("["):
+                parsed = json.loads(stripped)
+                if not isinstance(parsed, list):
+                    raise ValueError("CORS_ORIGINS JSON value must be an array")
+                return parsed
+            return [origin.strip() for origin in stripped.split(",") if origin.strip()]
+        return value
+
+    @model_validator(mode="after")
+    def validate_security_defaults(self) -> "Settings":
+        """Reject development security defaults outside local/dev/test."""
+        self.ENVIRONMENT = self.ENVIRONMENT.strip().lower()
+        is_local_environment = self.ENVIRONMENT in LOCAL_ENVIRONMENTS
+        self.API_KEY = self.API_KEY.strip()
+
+        if not is_local_environment and self.API_KEY in {"", DEFAULT_DEV_API_KEY}:
+            raise ValueError(
+                "API_KEY must be set to a non-default value when ENVIRONMENT is not "
+                "local, dev, or test."
+            )
+
+        if not self.CORS_ORIGINS and is_local_environment:
+            self.CORS_ORIGINS = ["*"]
+
+        if not is_local_environment and "*" in self.CORS_ORIGINS:
+            raise ValueError(
+                "CORS_ORIGINS='*' is only allowed when ENVIRONMENT is local, dev, "
+                "or test. Configure explicit production origins instead."
+            )
+
+        return self
+
 settings = Settings()
 
 
 def configure_logging() -> None:
     """Configure structured logging with structlog."""
-    shared_processors = [
+    shared_processors: list[Any] = [
         structlog.contextvars.merge_contextvars,
         structlog.processors.add_log_level,
         structlog.processors.TimeStamper(fmt="iso"),
