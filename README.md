@@ -33,6 +33,10 @@ The system is built as a modular microservices-ready application:
     API_KEY=sec-api-demo    # For ingestion endpoints
     ```
 
+    `sec-api-demo` is for local development only. Production deployments must
+    set `ENVIRONMENT=production` and provide a non-default `API_KEY`; otherwise
+    the API refuses to start.
+
 2.  **Run with Docker Compose**:
     ```bash
     docker-compose up --build

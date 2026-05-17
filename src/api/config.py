@@ -1,11 +1,12 @@
 """API configuration settings loaded from environment and defaults."""
+import json
 import logging
 import sys
-from typing import Any
+from typing import Annotated, Any
 
 import structlog
 from pydantic import Field, field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 DEFAULT_DEV_API_KEY = "sec-api-demo"
 LOCAL_ENVIRONMENTS = {"local", "dev", "development", "test", "testing"}
@@ -26,8 +27,8 @@ class Settings(BaseSettings):
         default="production",
         description="Runtime environment: local/dev/test allow development defaults",
     )
-    CORS_ORIGINS: list[str] | str = Field(
-        default="",
+    CORS_ORIGINS: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
         description="Allowed CORS origins. Wildcard is only allowed in local/dev/test.",
     )
 
@@ -65,31 +66,31 @@ class Settings(BaseSettings):
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, value: Any) -> Any:
-        """Support comma-separated CORS origins in addition to JSON arrays."""
+        """Support JSON arrays and comma-separated CORS origins."""
         if isinstance(value, str):
             stripped = value.strip()
             if not stripped:
                 return []
             if stripped.startswith("["):
-                return value
+                parsed = json.loads(stripped)
+                if not isinstance(parsed, list):
+                    raise ValueError("CORS_ORIGINS JSON value must be an array")
+                return parsed
             return [origin.strip() for origin in stripped.split(",") if origin.strip()]
         return value
 
     @model_validator(mode="after")
     def validate_security_defaults(self) -> "Settings":
         """Reject development security defaults outside local/dev/test."""
-        environment = self.ENVIRONMENT.strip().lower()
-        is_local_environment = environment in LOCAL_ENVIRONMENTS
-        api_key = self.API_KEY.strip()
+        self.ENVIRONMENT = self.ENVIRONMENT.strip().lower()
+        is_local_environment = self.ENVIRONMENT in LOCAL_ENVIRONMENTS
+        self.API_KEY = self.API_KEY.strip()
 
-        if not is_local_environment and api_key in {"", DEFAULT_DEV_API_KEY}:
+        if not is_local_environment and self.API_KEY in {"", DEFAULT_DEV_API_KEY}:
             raise ValueError(
                 "API_KEY must be set to a non-default value when ENVIRONMENT is not "
                 "local, dev, or test."
             )
-
-        if isinstance(self.CORS_ORIGINS, str):
-            self.CORS_ORIGINS = self.parse_cors_origins(self.CORS_ORIGINS)
 
         if not self.CORS_ORIGINS and is_local_environment:
             self.CORS_ORIGINS = ["*"]

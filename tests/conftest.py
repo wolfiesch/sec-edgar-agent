@@ -2,4 +2,4 @@
 
 import os
 
-os.environ.setdefault("ENVIRONMENT", "test")
+os.environ["ENVIRONMENT"] = "test"
